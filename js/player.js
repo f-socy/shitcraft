@@ -37,6 +37,7 @@ export function initGame() {
         return;
     }
     
+    // Set canvas dimensions based on world size
     const CANVAS_WIDTH = World.WORLD_WIDTH * World.TILE_SIZE;
     const CANVAS_HEIGHT = World.WORLD_HEIGHT * World.TILE_SIZE;
     
@@ -52,7 +53,7 @@ export function initGame() {
     player.x = startX * World.TILE_SIZE;
     player.y = World.findSurfaceY(startX) * World.TILE_SIZE;
     
-    // 3. Initialize Inventory (This is the line that will now work!)
+    // 3. Initialize Inventory 
     Inventory.initInventory(); 
 
     // Give starting items for testing
@@ -94,34 +95,60 @@ function gameLoop(timestamp) {
     requestAnimationFrame(gameLoop);
 }
 
-// --- UPDATE LOGIC ---
+// --- UPDATE LOGIC (FIXED COLLISION) ---
 
 function updatePlayer(delta) {
+    const T = World.TILE_SIZE;
     const gravity = 1200; 
+    const horizontalSpeed = 300; 
+    
+    // --- 1. Apply Gravity ---
     player.vy += gravity * delta;
-    const newY = player.y + player.vy * delta;
-    const blockBottomY = Math.floor((newY + player.height) / World.TILE_SIZE);
-    const blockMidX = Math.floor((player.x + player.width / 2) / World.TILE_SIZE);
     
-    const blockBelow = World.worldMap[blockMidX] ? getBlockInfo(World.worldMap[blockMidX][blockBottomY]) : null;
+    // --- 2. Calculate Potential New Position ---
+    let vx = 0; // Assume 0 for now until key tracking is fully implemented
+    let newX = player.x + vx * delta;
+    let newY = player.y + player.vy * delta;
 
-    if (blockBelow && blockBelow.type === 'BLOCK' && newY + player.height > blockBottomY * World.TILE_SIZE) {
-        player.onGround = true;
-        player.vy = 0;
-        player.y = (blockBottomY * World.TILE_SIZE) - player.height;
-    } else {
-        player.onGround = false;
-        player.y = newY;
-    }
+    player.onGround = false;
+
+    // --- 3. Check Vertical (Y) Collision ---
+    // Check two points at the bottom of the player: left foot and right foot
+    const leftFootGridX = Math.floor(player.x / T);
+    const rightFootGridX = Math.floor((player.x + player.width - 1) / T);
+    const bottomGridY = Math.floor((newY + player.height) / T);
+
+    const blockAtLeftFoot = World.getBlockAt(leftFootGridX, bottomGridY);
+    const blockAtRightFoot = World.getBlockAt(rightFootGridX, bottomGridY);
     
-    if (player.y + player.height > canvas.height) {
-        player.y = canvas.height - player.height;
-        player.vy = 0;
-        player.onGround = true;
+    const infoLeft = getBlockInfo(blockAtLeftFoot);
+    const infoRight = getBlockInfo(blockAtRightFoot);
+
+    // Collision check: if either foot hits a solid block (or ground block)
+    if (infoLeft.type === 'BLOCK' || infoRight.type === 'BLOCK' || blockAtLeftFoot === 'GRASS' || blockAtRightFoot === 'GRASS') {
+        
+        const blockTopY = bottomGridY * T;
+        
+        if (newY + player.height > blockTopY) {
+            
+            // Snap player position to the top of the block
+            player.y = blockTopY - player.height;
+            player.vy = 0; 
+            player.onGround = true; 
+            newY = player.y; 
+        }
     }
+
+    // --- 4. Apply Final Position ---
+    player.x = newX;
+    player.y = newY;
+    
+    // Simple boundary check
+    if (player.x < 0) player.x = 0;
+    if (player.x + player.width > World.WORLD_WIDTH * T) player.x = World.WORLD_WIDTH * T - player.width;
 }
 
-// --- RENDERING & INPUTS (Omitting full code for brevity, assume previous versions are used) ---
+// --- RENDERING (FIXED WORLD & HUD DRAWING) ---
 
 function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -133,13 +160,25 @@ function render() {
 
 function drawWorld() {
     const T = World.TILE_SIZE;
+    
     for (let x = 0; x < World.WORLD_WIDTH; x++) {
         for (let y = 0; y < World.WORLD_HEIGHT; y++) {
             const blockId = World.worldMap[x][y];
             const info = getBlockInfo(blockId);
-            if (blockId !== 'AIR' && blockId !== 'WATER') {
+            
+            // Draw all non-AIR blocks
+            if (blockId !== 'AIR') {
                 ctx.fillStyle = info.color;
                 ctx.fillRect(x * T, y * T, T, T);
+                
+                // Add water drawing (with some transparency)
+                if (blockId === 'WATER') {
+                    ctx.globalAlpha = 0.5;
+                    ctx.fillStyle = info.color;
+                    ctx.fillRect(x * T, y * T, T, T);
+                    ctx.globalAlpha = 1.0; 
+                }
+                
                 const breakState = World.getBreakState(x, y);
                 if (breakState > 0) {
                     ctx.globalAlpha = breakState * 0.7; 
@@ -147,9 +186,6 @@ function drawWorld() {
                     ctx.fillRect(x * T, y * T, T, T);
                     ctx.globalAlpha = 1.0;
                 }
-            } else if (blockId === 'WATER') {
-                ctx.fillStyle = info.color;
-                ctx.fillRect(x * T, y * T, T, T * 0.7); 
             }
         }
     }
@@ -170,6 +206,10 @@ function drawPlayer() {
 
 function drawHUD() {
     const T = World.TILE_SIZE;
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+    
+    // 1. Draw Health Bar
     const healthBarWidth = 150;
     const healthPercent = player.health / player.maxHealth;
     ctx.fillStyle = '#000000';
@@ -178,33 +218,41 @@ function drawHUD() {
     ctx.fillRect(10, 10, healthBarWidth * healthPercent, 20);
     ctx.strokeStyle = '#FFFFFF';
     ctx.strokeRect(10, 10, healthBarWidth, 20);
-    const hotbarY = canvas.height - T * 1.5;
-    const hotbarStart = (canvas.width / 2) - (9 * T / 2);
+
+    // 2. Draw Hotbar
+    const hotbarY = canvasHeight - T * 1.5;
+    const hotbarTotalWidth = 9 * T;
+    const hotbarStart = (canvasWidth / 2) - (hotbarTotalWidth / 2); 
     
     for (let i = 0; i < 9; i++) {
         const x = hotbarStart + i * T;
         const item = Inventory.getHotbarItem(i);
         const info = item ? getBlockInfo(item.id) : null;
+        
         ctx.fillStyle = '#333333';
         ctx.fillRect(x, hotbarY, T - 2, T - 2);
+        
         ctx.strokeStyle = i === currentHotbarSlot ? '#FFD700' : '#888888';
         ctx.lineWidth = 3;
         ctx.strokeRect(x, hotbarY, T - 2, T - 2);
-        if (info) {
+        
+        if (info && item.id !== 'AIR') {
             ctx.fillStyle = info.color;
             ctx.fillRect(x + 4, hotbarY + 4, T - 10, T - 10);
+            
             ctx.fillStyle = '#FFFFFF';
             ctx.font = '10px Arial';
             ctx.fillText(item.count, x + T - 15, hotbarY + T - 5);
         }
     }
     
-    if (isInventoryOpen) {
-        if (Inventory.drawInventoryScreen) Inventory.drawInventoryScreen(ctx, canvas.width, canvas.height, player.level);
+    // 3. Draw Inventory Screen (if open)
+    if (isInventoryOpen && Inventory.drawInventoryScreen) {
+        Inventory.drawInventoryScreen(ctx, canvasWidth, canvasHeight, player.level);
     }
 }
 
-
+// --- INPUT HANDLERS (Same as before) ---
 function handleKeyDown(e) {
     if (e.key === 'e' || e.key === 'E') {
         isInventoryOpen = !isInventoryOpen;
