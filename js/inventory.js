@@ -1,22 +1,21 @@
-// /js/inventory.js - COMPLETE SCRIPT (3x3 Crafting & Armor UI)
+// /js/inventory.js - COMPLETE SCRIPT (Minor Update)
 import { CRAFTING_RECIPES } from './crafting.js';
 import { getBlockInfo } from './utils.js';
 import * as Player from './player.js';
 
 let items = new Array(27).fill(null); 
 let hotbar = new Array(9).fill(null); 
-// Add some initial items for testing: Wood, Plank, Stick, Tool, Armor, Food
 hotbar[0] = { id: 'WOOD', count: 5, type: 'BLOCK' };
 hotbar[1] = { id: 'PLANK', count: 10, type: 'BLOCK' };
 hotbar[2] = { id: 'STICK', count: 5, type: 'ITEM' };
-hotbar[3] = { id: 'PICKAXE_WOOD', count: 1, type: 'TOOL', durability: 60, maxDurability: 60, toolType: 'PICKAXE', efficiency: 0.5, color: 'brown' };
+hotbar[3] = { id: 'PICKAXE_WOOD', count: 1, type: 'TOOL', durability: 60, maxDurability: 60, toolType: 'PICKAXE', efficiency: 0.5, color: 'brown', requiredLevel: 0 };
 hotbar[4] = { id: 'MUTTON', count: 3, type: 'FOOD', restoresHunger: 5, color: '#FFFACD' };
 hotbar[5] = { id: 'HELMET_IRON', count: 1, type: 'ARMOR', slot: 'helmet', defense: 2, color: '#C0C0C0' };
 
 
 let isOpen = false;
 let selectedSlot = 0; 
-let inventoryCrafting = new Array(9).fill(null); // Now 9 slots to support 3x3
+let inventoryCrafting = new Array(9).fill(null); 
 let craftingMode = 2; // 2 for 2x2 (default/inventory), 3 for 3x3 (crafting table)
 
 export function setupListeners() {
@@ -32,7 +31,6 @@ export function setupListeners() {
 
 export function setCraftingMode(mode) {
     craftingMode = mode;
-    // Clear grid when switching mode to avoid using 3x3 recipes in 2x2
     inventoryCrafting.fill(null); 
     checkCraftingResult();
 }
@@ -40,7 +38,6 @@ export function setCraftingMode(mode) {
 export function toggleInventory() {
     isOpen = !isOpen;
     if (isOpen) {
-        // If opened without interacting with a table, default back to 2x2
         if (craftingMode !== 3) {
             setCraftingMode(2); 
         }
@@ -54,15 +51,14 @@ export function getSelectedItem() {
 
 export function addItem(id, count) {
     // Logic to stack, then find empty slot (simplified)
-    for (let slot of hotbar) {
-        if (slot && slot.id === id && slot.count < 64) {
+    const slots = [...hotbar, ...items];
+    for (let slot of slots) {
+        if (slot && slot.id === id && slot.count < 64) { 
             slot.count += count;
             return;
         }
     }
     
-    // Try hotbar first, then main inventory
-    const slots = [...hotbar, ...items];
     for (let i = 0; i < slots.length; i++) {
         if (!slots[i]) {
             const info = getBlockInfo(id);
@@ -74,9 +70,10 @@ export function addItem(id, count) {
                 maxDurability: info.maxDurability,
                 toolType: info.toolType,
                 efficiency: info.efficiency,
-                slot: info.slot, // for armor
-                defense: info.defense, // for armor
-                restoresHunger: info.restoresHunger, // for food
+                slot: info.slot,
+                defense: info.defense,
+                restoresHunger: info.restoresHunger,
+                requiredLevel: info.requiredLevel
             };
             if (i < hotbar.length) {
                 hotbar[i] = newItem;
@@ -93,15 +90,13 @@ export function addItem(id, count) {
 let craftResult = null;
 
 function checkCraftingResult() {
-    const gridSize = craftingMode * craftingMode;
-    const input = inventoryCrafting.slice(0, gridSize).map(slot => slot ? slot.id : null);
+    const gridSize = craftingMode; 
+    const input = inventoryCrafting.slice(0, gridSize * gridSize).map(slot => slot ? slot.id : null);
     
     craftResult = CRAFTING_RECIPES.find(recipe => {
         if (recipe.size === craftingMode) {
             const recipeIDs = recipe.ingredients.map(ing => ing ? ing.id : null);
             
-            // Check if the input matches the recipe shape exactly
-            // If 2x2, only check the first 4 input slots against the first 4 recipe slots
             if (input.length !== recipeIDs.length) return false;
             
             return recipeIDs.every((id, index) => id === input[index]);
@@ -110,7 +105,7 @@ function checkCraftingResult() {
     });
 }
 
-// --- Drawing UI ---
+// ... (Drawing UI functions remain the same)
 
 export function drawUI(ctx, w, h) {
     drawHotbar(ctx, w, h);
@@ -118,8 +113,6 @@ export function drawUI(ctx, w, h) {
         drawInventory(ctx, w, h);
     }
 }
-
-// ... (drawHotbar remains the same)
 
 function drawHotbar(ctx, w, h) {
     const barWidth = 9 * 50; 
@@ -146,7 +139,6 @@ function drawHotbar(ctx, w, h) {
             ctx.font = '12px Arial';
             ctx.fillText(item.count, x + 5, y + 35);
 
-            // Draw durability bar for tools
             if (item.type === 'TOOL' && item.maxDurability > 0) {
                 const durabilityRatio = item.durability / item.maxDurability;
                 ctx.fillStyle = durabilityRatio > 0.5 ? 'green' : (durabilityRatio > 0.2 ? 'yellow' : 'red');
@@ -158,7 +150,6 @@ function drawHotbar(ctx, w, h) {
 
 
 function drawInventory(ctx, w, h) {
-    // Draw inventory panel
     const invW = 480; 
     const invH = 350;
     const invX = w / 2 - invW / 2;
@@ -170,7 +161,7 @@ function drawInventory(ctx, w, h) {
     ctx.fillStyle = 'white';
     ctx.font = '14px Arial';
     
-    // --- 1. Armor Slots (Top Left) ---
+    // 1. Armor Slots (Top Left)
     const armorSlots = Player.getPlayerState().armor;
     const armorOrder = ['helmet', 'chestplate', 'leggings', 'boots'];
     ctx.fillText("Armor", invX + 30, invY + 20);
@@ -184,20 +175,19 @@ function drawInventory(ctx, w, h) {
         ctx.strokeRect(x, y, 40, 40);
         
         if (item) {
-            ctx.fillStyle = item.color; // Needs color property on the armor item
+            ctx.fillStyle = item.color; 
             ctx.fillRect(x, y, 40, 40);
         }
     }
 
-    // --- 2. Crafting Grid (Center) ---
-    const gridSize = craftingMode; // 2 or 3
+    // 2. Crafting Grid (Center)
+    const gridSize = craftingMode; 
     const gridXStart = invX + 120;
     const gridYStart = invY + 30;
     
     ctx.fillText(gridSize === 3 ? "Crafting Table (3x3)" : "Crafting (2x2)", gridXStart, invY + 20);
 
     for (let i = 0; i < gridSize * gridSize; i++) {
-        // Only draw up to 4 slots if in 2x2 mode
         if (gridSize === 2 && i >= 4) continue;
         
         const x = gridXStart + (i % gridSize) * 45;
@@ -207,7 +197,7 @@ function drawInventory(ctx, w, h) {
         // TODO: Draw items in inventoryCrafting[i]
     }
     
-    // --- 3. Crafting Result Slot (Right) ---
+    // 3. Crafting Result Slot (Right)
     ctx.fillText("Result", gridXStart + gridSize * 45 + 20, invY + 50);
     const resultX = gridXStart + gridSize * 45 + 40;
     const resultY = invY + 70;
@@ -223,6 +213,6 @@ function drawInventory(ctx, w, h) {
         ctx.fillText(craftResult.output.count, resultX + 5, resultY + 35);
     }
     
-    // --- 4. Main Inventory Slots (Bottom) ---
-    // ... (Drawing logic for the 27 main slots)
+    // 4. Main Inventory Slots (Bottom) - Placeholder drawing
+    // ... (Main inventory drawing logic for the 27 slots would go here)
 }
