@@ -66,7 +66,7 @@ function gameLoop(currentTime) {
     
     Player.updatePlayer(deltaTime);
     Mobs.updateMobs(deltaTime, cycleProgress, Player.getPlayerState());
-    World.updateFurnaces(deltaTime); // NEW: Update smelting process
+    World.updateFurnaces(deltaTime); 
     
     // Save game state periodically (e.g., every 10 seconds)
     if (Math.floor(gameTime) % 10 === 0 && Math.floor(gameTime) !== Math.floor(gameTime - deltaTime)) {
