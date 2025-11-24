@@ -1,12 +1,15 @@
-// /js/world.js - UPDATED
+// /js/world.js - COMPLETE SCRIPT
 import * as Player from './player.js'; 
 import * as Inventory from './inventory.js'; 
+import * as Mobs from './mobs.js';
 import { generateNoiseMap, getBlockInfo, WORLD_BLOCKS } from './utils.js';
 
 export let worldMap = [];
 export let TILE_SIZE = 32;
 export const WORLD_WIDTH = 256; 
 export const WORLD_HEIGHT = 128; 
+let furnaceStates = {}; // { 'x,y': { input: null, fuel: null, output: null, time: 0 } }
+let blocksBeingBroken = {}; // { 'x,y': damage_progress (0-100) }
 
 // --- World Generation (Procedural) ---
 
@@ -16,27 +19,31 @@ export function generateWorld(seed, canvasW, canvasH, tileSize) {
     const rows = WORLD_HEIGHT;
 
     // Generate terrain height map using Perlin Noise
-    const heightMap = generateNoiseMap(seed, cols, 0.05, 10, rows / 4); // Scale, Octaves, Amplitude
-    const caveMap = generateNoiseMap(seed + 1, cols * 2, 0.1, 8, 1, 0.5); // Used for cave generation
+    const heightMap = generateNoiseMap(seed, cols, 0.05, 10, rows / 4); 
+    const caveMap = generateNoiseMap(seed + 1, cols * 2, 0.1, 8, 1, 0.5); 
 
     for (let x = 0; x < cols; x++) {
         worldMap[x] = [];
-        const surfaceY = Math.floor(rows * 0.7 - heightMap[x]); // Surface level
+        const surfaceY = Math.floor(rows * 0.7 - heightMap[x]); 
         
         for (let y = 0; y < rows; y++) {
             if (y < surfaceY) {
-                worldMap[x][y] = 'AIR'; // Sky
+                // Add static water bodies above the surface line sometimes
+                if (Math.random() < 0.005 && y > surfaceY - 5 && y < surfaceY - 1) {
+                    worldMap[x][y] = 'WATER'; 
+                } else {
+                    worldMap[x][y] = 'AIR'; 
+                }
             } else if (y === surfaceY) {
-                worldMap[x][y] = 'GRASS'; // Top layer
+                worldMap[x][y] = 'GRASS'; 
             } else if (y < surfaceY + 4) {
-                worldMap[x][y] = 'DIRT'; // Sub-surface
+                worldMap[x][y] = 'DIRT'; 
             } else {
-                // Determine if it's rock or an open cave
                 const caveNoise = caveMap[x * 2][y] || 0;
                 if (caveNoise < 0.2) {
-                    worldMap[x][y] = 'AIR'; // Cave opening
+                    worldMap[x][y] = 'AIR'; 
                 } else {
-                    worldMap[x][y] = 'STONE'; // Solid rock
+                    worldMap[x][y] = 'STONE'; 
                     // Basic Ore generation
                     if (y > surfaceY + 10 && Math.random() < 0.03) {
                         worldMap[x][y] = (Math.random() < 0.5) ? 'COAL_ORE' : 'IRON_ORE';
@@ -45,7 +52,7 @@ export function generateWorld(seed, canvasW, canvasH, tileSize) {
             }
         }
     }
-    // TODO: Add tree and structure generation passes
+    console.log(`Generated world map: ${cols}x${rows}`);
 }
 
 export function findSurfaceY(col) {
@@ -60,8 +67,7 @@ export function findSurfaceY(col) {
 // --- Drawing and Day/Night Cycle ---
 
 export function drawWorld(ctx, tileSize, cameraX, cameraY, cycleProgress) {
-    // Calculate ambient light based on cycleProgress (0=noon, 0.5=midnight, 1.0=noon)
-    // Use a cosine wave for smooth transition: 1.0 at 0 and 1.0 (day), 0.5 at 0.5 (night)
+    // Calculate ambient light based on cycleProgress
     const lightLevel = 0.5 * (Math.cos(2 * Math.PI * (cycleProgress - 0.5)) + 1); // 0.0 to 1.0
     const tint = Math.max(0.3, 0.6 + lightLevel * 0.4); // Min brightness 0.3, Max 1.0
 
@@ -107,8 +113,6 @@ export function drawWorld(ctx, tileSize, cameraX, cameraY, cycleProgress) {
 
 // --- Block Interaction (Time-Based Breaking) ---
 
-let blocksBeingBroken = {}; // { 'x,y': damage_progress (0-100), 'x2,y2': ... }
-
 export function getBlockAt(worldX, worldY) {
     const col = Math.floor(worldX / TILE_SIZE);
     const row = Math.floor(worldY / TILE_SIZE);
@@ -135,24 +139,44 @@ export function updateBlockBreak(col, row, deltaTime) {
     const blockInfo = getBlockInfo(worldMap[col][row]);
     const tool = Inventory.getSelectedItem();
     
-    // Calculate break speed based on tool and material
-    let breakTime = blockInfo.hardness; // Base time (e.g., in seconds)
+    // Check if the tool exists and has durability
+    const toolIsBroken = tool && tool.durability <= 0;
     
-    // Simple tool effectiveness logic (e.g., Wood Axe is fast on wood)
-    if (tool && tool.toolType === blockInfo.bestTool) {
-        breakTime /= 5; // 5x faster with the right tool
-    } else if (tool && tool.toolType) {
-        // Penalty for wrong tool (e.g., pickaxe on dirt)
-        breakTime *= 2; 
+    // Calculate break speed based on tool and material
+    let breakTime = blockInfo.hardness; 
+    
+    // Get tool efficiency from the item data (if tool is equipped)
+    const efficiency = tool ? tool.efficiency || 1 : 1; 
+    
+    // Apply efficiency and tool match
+    if (tool && tool.toolType === blockInfo.bestTool && !toolIsBroken) {
+        breakTime *= efficiency; // Faster break time (efficiency is a fractional value, e.g., 0.5)
+        
+        // Decrease tool durability
+        if (tool.durability) {
+            // Note: In a real game, you must update the tool object in the Inventory module
+            // For this PoC, we will assume durability is mutable on the returned item object
+            tool.durability -= 1; // 1 point of damage per successful hit
+            if (tool.durability <= 0) {
+                console.log(`${tool.id} broke!`);
+                // TODO: Remove tool from inventory hotbar/slot
+            }
+        }
+    } else if (tool && tool.toolType && tool.toolType !== blockInfo.bestTool) {
+        breakTime *= 2; // Penalty for wrong tool
     }
 
-    // Convert time to a damage rate (100 is max damage)
+    // If tool is broken or no tool, it's slow
+    if (toolIsBroken || !tool) {
+        breakTime *= 5; // Very slow breaking
+    }
+
     const damageRate = (100 / breakTime) * deltaTime;
     blocksBeingBroken[key] += damageRate;
 
     if (blocksBeingBroken[key] >= 100) {
         removeBlock(col, row);
-        // Add block drops to inventory (needs Inventory implementation)
+        // Add block drops to inventory
         const blockDrops = blockInfo.drops || [{ id: blockInfo.id, count: 1 }];
         for (const drop of blockDrops) {
             Inventory.addItem(drop.id, drop.count);
@@ -185,6 +209,43 @@ export function placeBlock(col, row, blockId) {
     }
 }
 
+// --- Furnace and Smelting Logic ---
+
+export function updateFurnaces(deltaTime) {
+    for (const key in furnaceStates) {
+        const state = furnaceStates[key];
+        const inputInfo = state.input ? getBlockInfo(state.input.id) : null;
+        const recipe = inputInfo ? inputInfo.smeltingRecipe : null;
+
+        if (recipe && state.fuel && state.fuel.count > 0 && state.input && state.input.count > 0) {
+            state.time += deltaTime;
+
+            if (state.time >= recipe.time) {
+                // Smelting complete
+                if (!state.output) {
+                    state.output = { id: recipe.output.id, count: 0 };
+                }
+                state.output.count += recipe.output.count;
+                
+                // Consume 1 fuel item and 1 input item
+                state.fuel.count -= 1;
+                state.input.count -= 1;
+                state.time = 0; // Reset time for next item
+
+                if (state.input.count <= 0) {
+                    state.input = null; // Clear input
+                }
+            }
+        }
+    }
+}
+
+export function openFurnace(col, row) {
+    const key = `${col},${row}`;
+    furnaceStates[key] = furnaceStates[key] || { input: null, fuel: null, output: null, time: 0 };
+    return furnaceStates[key];
+    // In a full game, this would trigger a UI overlay
+}
 
 // --- Progress Saving (Local Storage) ---
 
@@ -194,9 +255,11 @@ export function saveGameState(playerState, mobState) {
             world: worldMap,
             player: playerState,
             mobs: mobState,
+            furnaceStates: furnaceStates, // Save furnace state
             time: Date.now() 
         };
         localStorage.setItem('blockWorldSave', JSON.stringify(gameState));
+        console.log("Game saved successfully.");
     } catch (e) {
         console.error("Could not save game state:", e);
     }
@@ -210,6 +273,7 @@ export function loadGameState() {
             worldMap = gameState.world;
             Player.loadPlayerState(gameState.player);
             Mobs.loadMobState(gameState.mobs);
+            furnaceStates = gameState.furnaceStates || {}; // Load furnace state
             return true;
         }
     } catch (e) {
