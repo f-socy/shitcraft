@@ -1,4 +1,4 @@
-// /js/main.js - UPDATED
+// /js/main.js - COMPLETE SCRIPT
 import * as World from './world.js';
 import * as Player from './player.js';
 import * as Inventory from './inventory.js';
@@ -66,6 +66,7 @@ function gameLoop(currentTime) {
     
     Player.updatePlayer(deltaTime);
     Mobs.updateMobs(deltaTime, cycleProgress, Player.getPlayerState());
+    World.updateFurnaces(deltaTime); // NEW: Update smelting process
     
     // Save game state periodically (e.g., every 10 seconds)
     if (Math.floor(gameTime) % 10 === 0 && Math.floor(gameTime) !== Math.floor(gameTime - deltaTime)) {
