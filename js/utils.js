@@ -1,4 +1,4 @@
-// /js/utils.js - COMPLETE SCRIPT (Finalized with Diamond Items, Gold, and Deep Stone)
+// /js/utils.js - COMPLETE SCRIPT (Includes all Block/Item/Tool Definitions)
 
 // --- A* Pathfinding Helpers (Simplified) ---
 class PriorityQueue {
@@ -31,7 +31,6 @@ export class PathNode {
     }
 
     static findPath(start, end, worldMap) {
-        // Simple A* implementation (PoC)
         const openList = new PriorityQueue();
         const startNode = new PathNode(start.x, start.y, 0, PathNode.heuristic(start, end));
         openList.enqueue(startNode, startNode.f);
@@ -169,16 +168,16 @@ export const WORLD_BLOCKS = {
     // ORE Definitions
     'COAL_ORE': { color: '#444444', name: 'Coal Ore', hardness: 4.0, bestTool: 'PICKAXE', type: 'BLOCK', drops: [{ id: 'COAL', count: 1 }] },
     'IRON_ORE': { 
-        color: '#B5A642', name: 'Iron Ore', hardness: 5.0, bestTool: 'PICKAXE', type: 'BLOCK', requiredLevel: 1, // Requires stone pickaxe
+        color: '#B5A642', name: 'Iron Ore', hardness: 5.0, bestTool: 'PICKAXE', type: 'BLOCK', requiredLevel: 1, 
         smeltingRecipe: { fuel: ['COAL', 'PLANK'], output: { id: 'IRON_INGOT', count: 1 }, time: 5.0 } 
     },
     'GOLD_ORE': { 
-        color: '#FFD700', name: 'Gold Ore', hardness: 7.0, bestTool: 'PICKAXE', type: 'BLOCK', requiredLevel: 2, // Requires iron pickaxe
+        color: '#FFD700', name: 'Gold Ore', hardness: 7.0, bestTool: 'PICKAXE', type: 'BLOCK', requiredLevel: 2, 
         smeltingRecipe: { fuel: ['COAL', 'PLANK'], output: { id: 'GOLD_INGOT', count: 1 }, time: 7.0 } 
     },
     'DIAMOND_ORE': { 
-        color: '#00FFFF', name: 'Diamond Ore', hardness: 10.0, bestTool: 'PICKAXE', type: 'BLOCK', requiredLevel: 3, // Requires diamond pickaxe
-        drops: [{ id: 'DIAMOND', count: 1, chance: 1.0 }] // Drops the item directly
+        color: '#00FFFF', name: 'Diamond Ore', hardness: 10.0, bestTool: 'PICKAXE', type: 'BLOCK', requiredLevel: 3, 
+        drops: [{ id: 'DIAMOND', count: 1, chance: 1.0 }] 
     },
     
     // Deep Layer Block
