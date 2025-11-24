@@ -1,4 +1,4 @@
-// /js/world.js - COMPLETE SCRIPT (Updated Mineral and Deep Layer Generation)
+// /js/world.js - COMPLETE SCRIPT (Includes fix for getBlockAt export)
 import * as Player from './player.js'; 
 import * as Inventory from './inventory.js'; 
 import * as Mobs from './mobs.js';
@@ -19,7 +19,6 @@ function placeBlockSafe(x, y, id) {
 }
 
 // --- Dummy Functions for Missing Files/Logic ---
-// (These are just placeholders to prevent errors if the files don't have these exports)
 function generateDungeon(x, y) { console.log(`Dungeon generated at ${x}, ${y}`); }
 function generateTrees(cols) { console.log(`Trees generated across ${cols} columns`); }
 export function updateBlockBreaks(delta) { console.log('Block breaks updated.'); }
@@ -120,12 +119,14 @@ export function findSurfaceY(col) {
     }
     return WORLD_HEIGHT / 2;
 }
-// Add this function near the bottom of /js/world.js
-// It safely returns the ID of the block at a given coordinate.
+
+/**
+ * Safely returns the block ID at a specific grid coordinate.
+ * This was needed to fix the "getBlockAt is not exported" error.
+ */
 export function getBlockAt(x, y) {
     if (x >= 0 && x < WORLD_WIDTH && y >= 0 && y < WORLD_HEIGHT) {
         return worldMap[x][y];
     }
-    // Return a solid block type outside the bounds to prevent mobs/player from falling forever
     return 'DEEP_STONE'; 
 }
