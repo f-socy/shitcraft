@@ -1,4 +1,4 @@
-// /js/utils.js - COMPLETE SCRIPT (Includes all Block/Item/Tool Definitions)
+// /js/utils.js - COMPLETE SCRIPT 
 
 // --- A* Pathfinding Helpers (Simplified) ---
 class PriorityQueue {
