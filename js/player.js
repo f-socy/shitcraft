@@ -1,28 +1,29 @@
-// /js/player.js
-
-import { getBlockAt, removeBlock } from './world.js';
+// /js/player.js - UPDATED
+import { getBlockAt, updateBlockBreak, startBlockBreak, stopBlockBreak, placeBlock } from './world.js';
+import * as Inventory from './inventory.js'; 
 
 let player = {
-    x: 0,
-    y: 0,
-    width: 20,
-    height: 40,
-    moveSpeed: 200, // pixels per second
-    velX: 0,
-    velY: 0,
-    isJumping: false,
-    gravity: 800,
-    jumpForce: 400
+    x: 0, y: 0, width: 20, height: 40,
+    moveSpeed: 200, velX: 0, velY: 0,
+    isJumping: false, gravity: 800, jumpForce: 400,
+    health: 20
 };
 
 let keyState = {};
 let TILE_SIZE = 32;
+let isBreaking = false;
+let targetBlock = null;
 
 export function initPlayer(startX, startY, tileSize) {
     player.x = startX;
     player.y = startY;
     TILE_SIZE = tileSize;
+    document.onmousedown = handleMouseInput;
+    document.onmouseup = handleMouseInput;
 }
+
+export function getPlayerState() { return player; }
+export function loadPlayerState(state) { player = state; }
 
 export function handleInput(event) {
     keyState[event.key.toLowerCase()] = (event.type === 'keydown');
@@ -35,70 +36,77 @@ export function handleInput(event) {
             }
         }
         if (event.key.toLowerCase() === 'e') {
-            // Placeholder for inventory toggle
-            console.log("Inventory Toggled (Not Implemented Yet)");
+            Inventory.toggleInventory();
+        }
+    }
+}
+
+function handleMouseInput(event) {
+    const worldX = player.x + (event.clientX - window.innerWidth / 2);
+    const worldY = player.y + (event.clientY - window.innerHeight / 2);
+    const block = getBlockAt(worldX, worldY);
+    targetBlock = block; // Store the block for continuous breaking in updatePlayer
+
+    if (!block) return;
+
+    if (event.type === 'mousedown') {
+        if (event.button === 0) { // Left Click (Start Breaking)
+            isBreaking = true;
+            startBlockBreak(block.x, block.y);
+        } else if (event.button === 2) { // Right Click (Placing/Interacting)
+            event.preventDefault(); // Stop context menu
+            const item = Inventory.getSelectedItem();
+            if (item && item.type === 'BLOCK') {
+                placeBlock(block.x, block.y, item.id);
+                // Deduct item (TODO: implement in Inventory)
+            } else if (item && item.type === 'INTERACTABLE') {
+                // E.g., Open furnace or crafting table UI
+            }
+        }
+    } else if (event.type === 'mouseup') {
+        if (event.button === 0) { // Left Click (Stop Breaking)
+            isBreaking = false;
+            stopBlockBreak(block.x, block.y);
         }
     }
 }
 
 export function updatePlayer(deltaTime) {
-    // --- Movement ---
+    // --- Movement Physics (Same as before) ---
     player.velX = 0;
-    if (keyState['a']) {
-        player.velX = -player.moveSpeed;
-    }
-    if (keyState['d']) {
-        player.velX = player.moveSpeed;
-    }
+    if (keyState['a']) player.velX = -player.moveSpeed;
+    if (keyState['d']) player.velX = player.moveSpeed;
+    if (player.isJumping || player.velY < 0) player.velY += player.gravity * deltaTime;
 
-    // Apply Gravity
-    if (player.isJumping || player.velY < 0) {
-         player.velY += player.gravity * deltaTime;
+    const newX = player.x + player.velX * deltaTime;
+    const newY = player.y + player.velY * deltaTime;
+    
+    // Basic Collision Checks (You need full-featured collision logic here)
+    // Horizontal Check
+    if (!getBlockAt(newX + player.width / 2, player.y + player.height / 2)) {
+        player.x = newX;
     }
-    
-    // Apply velocity to position
-    player.x += player.velX * deltaTime;
-    player.y += player.velY * deltaTime;
-    
-    // --- Collision Detection (Simplified) ---
+    // Vertical Check
     let blockBelow = getBlockAt(player.x, player.y + player.height + 1);
-    
-    if (blockBelow && blockBelow.id !== '0') {
-        // Simple grounding logic: snap to the top of the block
+    if (blockBelow && blockBelow.id !== 'AIR') {
         player.y = blockBelow.y * TILE_SIZE - player.height;
         player.velY = 0;
         player.isJumping = false;
     } else {
-        // Check if player should start falling if not on the ground
+        player.y = newY;
         player.isJumping = true;
     }
-    
-    // --- Block Breaking/Placing (Left/Right Click) ---
-    document.onmousedown = function(event) {
-        const worldX = player.x + (event.clientX - window.innerWidth / 2);
-        const worldY = player.y + (event.clientY - window.innerHeight / 2);
-        
-        const targetBlock = getBlockAt(worldX, worldY);
-        
-        if (targetBlock && event.button === 0) { // Left Click (Break)
-            console.log(`Broke block: ${targetBlock.properties.name}`);
-            removeBlock(targetBlock.x, targetBlock.y);
-        }
-        // Right click (Place) would be implemented here
-    };
 
-    return player;
+    // --- Block Breaking Update ---
+    if (isBreaking && targetBlock) {
+        updateBlockBreak(targetBlock.x, targetBlock.y, deltaTime);
+    }
 }
 
 export function drawPlayer(ctx, tileSize, cameraX, cameraY) {
     const screenX = player.x + cameraX;
     const screenY = player.y + cameraY;
     
-    ctx.fillStyle = 'red'; // Player color
+    ctx.fillStyle = 'red'; 
     ctx.fillRect(screenX, screenY, player.width, player.height);
-}
-
-export function updatePlayer() {
-    // ... (rest of the update logic)
-    return player; // Must return the player object for the main loop to get camera position
 }
