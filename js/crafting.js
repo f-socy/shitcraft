@@ -10,7 +10,6 @@ export const CRAFTING_RECIPES = [
     
     // =======================================================
     // --- BASIC INVENTORY (2x2) RECIPES ---
-    // (Unchanged)
     // =======================================================
     {
         name: "Planks from Wood",
@@ -60,10 +59,164 @@ export const CRAFTING_RECIPES = [
     
     // =======================================================
     // --- CRAFTING TABLE (3x3) - WOOD & STONE TOOLS ---
-    // (Unchanged)
     // =======================================================
     {
         name: "Wooden Pickaxe (3x3)",
         size: 3,
         ingredients: [
-            { id: 'PLANK' }, { id: 'PLANK' }, { id: 'PLANK'
+            { id: 'PLANK' }, { id: 'PLANK' }, { id: 'PLANK' },
+            null, { id: 'STICK' }, null,
+            null, { id: 'STICK' }, null
+        ],
+        output: { id: 'PICKAXE_WOOD', count: 1 }
+    },
+    {
+        name: "Wooden Axe (3x3)",
+        size: 3,
+        ingredients: [
+            { id: 'PLANK' }, { id: 'PLANK' }, null,
+            { id: 'PLANK' }, { id: 'STICK' }, null,
+            null, { id: 'STICK' }, null
+        ],
+        output: { id: 'AXE_WOOD', count: 1 }
+    },
+    {
+        name: "Stone Pickaxe (3x3)",
+        size: 3,
+        ingredients: [
+            { id: 'COBBLESTONE' }, { id: 'COBBLESTONE' }, { id: 'COBBLESTONE' },
+            null, { id: 'STICK' }, null,
+            null, { id: 'STICK' }, null
+        ],
+        output: { id: 'PICKAXE_STONE', count: 1 }
+    },
+    {
+        name: "Stone Axe (3x3)",
+        size: 3,
+        ingredients: [
+            { id: 'COBBLESTONE' }, { id: 'COBBLESTONE' }, null,
+            { id: 'COBBLESTONE' }, { id: 'STICK' }, null,
+            null, { id: 'STICK' }, null
+        ],
+        output: { id: 'AXE_STONE', count: 1 }
+    },
+
+    // =======================================================
+    // --- CRAFTING TABLE (3x3) - IRON TOOLS & ARMOR ---
+    // =======================================================
+    {
+        name: "Iron Pickaxe (3x3)",
+        size: 3,
+        ingredients: [
+            { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' },
+            null, { id: 'STICK' }, null,
+            null, { id: 'STICK' }, null
+        ],
+        output: { id: 'PICKAXE_IRON', count: 1 }
+    },
+    {
+        name: "Iron Axe (3x3)",
+        size: 3,
+        ingredients: [
+            { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' }, null,
+            { id: 'IRON_INGOT' }, { id: 'STICK' }, null,
+            null, { id: 'STICK' }, null
+        ],
+        output: { id: 'AXE_IRON', count: 1 }
+    },
+    {
+        name: "Iron Helmet",
+        size: 3,
+        ingredients: [
+            { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' },
+            { id: 'IRON_INGOT' }, null, { id: 'IRON_INGOT' },
+            null, null, null
+        ],
+        output: { id: 'HELMET_IRON', count: 1 } 
+    },
+    {
+        name: "Iron Chestplate",
+        size: 3,
+        ingredients: [
+            { id: 'IRON_INGOT' }, null, { id: 'IRON_INGOT' },
+            { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' },
+            { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' }
+        ],
+        output: { id: 'CHESTPLATE_IRON', count: 1 } 
+    },
+    {
+        name: "Iron Leggings",
+        size: 3,
+        ingredients: [
+            { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' },
+            { id: 'IRON_INGOT' }, null, { id: 'IRON_INGOT' },
+            { id: 'IRON_INGOT' }, null, { id: 'IRON_INGOT' }
+        ],
+        output: { id: 'LEGGINGS_IRON', count: 1 } 
+    },
+    {
+        name: "Iron Boots",
+        size: 3,
+        ingredients: [
+            null, null, null,
+            { id: 'IRON_INGOT' }, null, { id: 'IRON_INGOT' },
+            { id: 'IRON_INGOT' }, null, { id: 'IRON_INGOT' }
+        ],
+        output: { id: 'BOOTS_IRON', count: 1 } 
+    },
+
+    // =======================================================
+    // --- CRAFTING TABLE (3x3) - DIAMOND TOOLS & ARMOR (NEW) ---
+    // =======================================================
+    {
+        name: "Diamond Pickaxe (3x3)",
+        size: 3,
+        ingredients: [
+            { id: 'DIAMOND' }, { id: 'DIAMOND' }, { id: 'DIAMOND' },
+            null, { id: 'STICK' }, null,
+            null, { id: 'STICK' }, null
+        ],
+        output: { id: 'PICKAXE_DIAMOND', count: 1 }
+    },
+    {
+        name: "Diamond Helmet",
+        size: 3,
+        ingredients: [
+            { id: 'DIAMOND' }, { id: 'DIAMOND' }, { id: 'DIAMOND' },
+            { id: 'DIAMOND' }, null, { id: 'DIAMOND' },
+            null, null, null
+        ],
+        output: { id: 'HELMET_DIAMOND', count: 1 }
+    },
+    {
+        name: "Diamond Chestplate",
+        size: 3,
+        ingredients: [
+            { id: 'DIAMOND' }, null, { id: 'DIAMOND' },
+            { id: 'DIAMOND' }, { id: 'DIAMOND' }, { id: 'DIAMOND' },
+            { id: 'DIAMOND' }, { id: 'DIAMOND' }, { id: 'DIAMOND' }
+        ],
+        output: { id: 'CHESTPLATE_DIAMOND', count: 1 }
+    },
+    {
+        name: "Diamond Leggings",
+        size: 3,
+        ingredients: [
+            { id: 'DIAMOND' }, { id: 'DIAMOND' }, { id: 'DIAMOND' },
+            { id: 'DIAMOND' }, null, { id: 'DIAMOND' },
+            { id: 'DIAMOND' }, null, { id: 'DIAMOND' }
+        ],
+        output: { id: 'LEGGINGS_DIAMOND', count: 1 }
+    },
+    {
+        name: "Diamond Boots",
+        size: 3,
+        ingredients: [
+            null, null, null,
+            { id: 'DIAMOND' }, null, { id: 'DIAMOND' },
+            { id: 'DIAMOND' }, null, { id: 'DIAMOND' }
+        ],
+        output: { id: 'BOOTS_DIAMOND', count: 1 }
+    },
+
+];
