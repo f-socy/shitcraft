@@ -1,6 +1,8 @@
-// /js/main.js
-import { initWorld, drawWorld, generateWorld } from './world.js';
-import { initPlayer, updatePlayer, drawPlayer, handleInput } from './player.js';
+// /js/main.js - UPDATED
+import * as World from './world.js';
+import * as Player from './player.js';
+import * as Inventory from './inventory.js';
+import * as Mobs from './mobs.js';
 
 // --- Constants ---
 const TILE_SIZE = 32;
@@ -11,46 +13,77 @@ const ctx = canvas.getContext('2d');
 
 let lastTime = 0;
 let deltaTime = 0;
+let gameTime = 0; // Total seconds the game has been running
+const DAY_LENGTH_SECONDS = 300; // 5 minutes for a full day/night cycle
 
-// Set up canvas dimensions
+// Set up canvas dimensions and resize listener
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
+window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+});
 
 // --- Initialization ---
 function initializeGame() {
-    const seed = 12345; // Fixed seed for reproducible terrain
-    generateWorld(seed, canvas.width, canvas.height, TILE_SIZE);
-    
-    // Player starts near the center top
-    const startX = Math.floor(canvas.width / 2 / TILE_SIZE);
-    const startY = 10; 
-    initPlayer(startX * TILE_SIZE, startY * TILE_SIZE, TILE_SIZE);
-    
-    window.addEventListener('keydown', handleInput);
-    window.addEventListener('keyup', handleInput);
+    // 1. Load or Generate World
+    if (World.loadGameState()) {
+        console.log("Game state loaded from local storage.");
+    } else {
+        // Generate a new world based on a random seed
+        const seed = Math.floor(Math.random() * 1000000); 
+        World.generateWorld(seed, canvas.width, canvas.height, TILE_SIZE);
+        
+        // Initial spawn (find a safe spot)
+        const startX = Math.floor(World.WORLD_WIDTH / 2);
+        const startY = World.findSurfaceY(startX);
+        Player.initPlayer(startX * TILE_SIZE, startY * TILE_SIZE, TILE_SIZE);
+        
+        // Populate initial mobs (for a new world)
+        Mobs.spawnMobs(World.WORLD_WIDTH, World.WORLD_HEIGHT, TILE_SIZE); 
+        console.log(`New world generated with seed: ${seed}`);
+    }
+
+    Inventory.setupListeners();
+    window.addEventListener('keydown', Player.handleInput);
+    window.addEventListener('keyup', Player.handleInput);
     
     requestAnimationFrame(gameLoop);
 }
 
-// --- Main Loop ---
+// --- Main Game Loop ---
 function gameLoop(currentTime) {
     if (currentTime) {
         deltaTime = (currentTime - lastTime) / 1000;
         lastTime = currentTime;
+        gameTime += deltaTime;
     }
 
-    // 1. Update
-    updatePlayer(deltaTime);
+    // --- 1. Update Game State ---
     
-    // 2. Render
+    // Day/Night Cycle calculation
+    const cycleProgress = (gameTime % DAY_LENGTH_SECONDS) / DAY_LENGTH_SECONDS; // 0.0 to 1.0
+    
+    Player.updatePlayer(deltaTime);
+    Mobs.updateMobs(deltaTime, cycleProgress, Player.getPlayerState());
+    
+    // Save game state periodically (e.g., every 10 seconds)
+    if (Math.floor(gameTime) % 10 === 0 && Math.floor(gameTime) !== Math.floor(gameTime - deltaTime)) {
+        World.saveGameState(Player.getPlayerState(), Mobs.getAllMobs());
+    }
+
+    // --- 2. Render ---
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    const cameraX = -updatePlayer().x + canvas.width / 2; // Simple camera follow
-    const cameraY = -updatePlayer().y + canvas.height / 2;
+    const playerState = Player.getPlayerState();
+    const cameraX = -playerState.x + canvas.width / 2; 
+    const cameraY = -playerState.y + canvas.height / 2;
     
-    drawWorld(ctx, TILE_SIZE, cameraX, cameraY);
-    drawPlayer(ctx, TILE_SIZE, cameraX, cameraY);
-    
+    World.drawWorld(ctx, TILE_SIZE, cameraX, cameraY, cycleProgress); // Pass cycle for tinting
+    Mobs.drawMobs(ctx, TILE_SIZE, cameraX, cameraY);
+    Player.drawPlayer(ctx, TILE_SIZE, cameraX, cameraY);
+    Inventory.drawUI(ctx, canvas.width, canvas.height); // Draw hotbar/inventory
+
     requestAnimationFrame(gameLoop);
 }
 
