@@ -5,8 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>2D Block World (PvQ)</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #1c1c1c; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        canvas { border: 1px solid #444; }
+        /* Basic styling to center the game canvas */
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #1c1c1c; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+        }
+        canvas { 
+            border: 1px solid #444; 
+        }
     </style>
 </head>
 <body>
@@ -17,14 +28,13 @@
     <script type="module" src="./js/inventory.js"></script>
     <script type="module" src="./js/mobs.js"></script>
     <script type="module" src="./js/crafting.js"></script>
+    <script type="module" src="./js/block_actions.js"></script> 
     
     <script type="module" src="./js/player.js"></script> 
     
     <script type="module">
-        // Import the main start function from player.js
+        // Import and call the game initialization function when the window loads.
         import { initGame } from './js/player.js'; 
-        
-        // This is the essential step: calling the initialization function.
         window.onload = initGame;
     </script>
 
