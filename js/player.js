@@ -1,4 +1,4 @@
-// /js/player.js - THE MAIN GAME ENGINE FILE
+// /js/player.js - COMPLETE SCRIPT
 
 import * as World from './world.js';
 import * as Inventory from './inventory.js';
@@ -64,6 +64,7 @@ export function initGame() {
     player.y = World.findSurfaceY(startX) * World.TILE_SIZE;
     
     // 3. Initialize Inventory (Give starting items for testing)
+    // NOTE: Inventory.initInventory() must be a function in inventory.js
     Inventory.initInventory();
     Inventory.addItemToInventory('PICKAXE_WOOD', 1);
     Inventory.addItemToInventory('AXE_WOOD', 1);
@@ -76,6 +77,7 @@ export function initGame() {
     document.addEventListener('keyup', handleKeyUp);
     canvas.addEventListener('mousedown', handleMouseDown);
     canvas.addEventListener('mouseup', handleMouseUp);
+    canvas.addEventListener('contextmenu', e => e.preventDefault()); // Prevent right-click menu
 
     // 5. Start the main game loop
     console.log(`Game initialized. Player starting at X:${player.x}, Y:${player.y}`);
@@ -121,7 +123,7 @@ function updatePlayer(delta) {
     
     const blockBelow = World.worldMap[blockMidX] ? getBlockInfo(World.worldMap[blockMidX][blockBottomY]) : null;
 
-    if (blockBelow && blockBelow.type === 'BLOCK') {
+    if (blockBelow && blockBelow.type === 'BLOCK' && newY + player.height > blockBottomY * World.TILE_SIZE) {
         player.onGround = true;
         player.vy = 0;
         player.y = (blockBottomY * World.TILE_SIZE) - player.height;
@@ -136,6 +138,10 @@ function updatePlayer(delta) {
         player.vy = 0;
         player.onGround = true;
     }
+    
+    // Horizontal Movement (Simple implementation)
+    // NOTE: This should ideally be moved to an input buffer and updated with delta time
+    // For now, we only update position in handleKeyDown
 }
 
 // --- RENDERING ---
@@ -147,7 +153,8 @@ function render() {
     drawWorld();
 
     // 2. Draw Mobs
-    Mobs.drawMobs(ctx, World.TILE_SIZE);
+    // NOTE: Mobs.drawMobs(ctx, World.TILE_SIZE) must be defined in mobs.js
+    if (Mobs.drawMobs) Mobs.drawMobs(ctx, World.TILE_SIZE);
 
     // 3. Draw Player
     drawPlayer();
@@ -157,8 +164,6 @@ function render() {
 }
 
 function drawWorld() {
-    // Basic camera offset (center the camera on the player, but simplified here)
-    // For now, draw the entire world map
     const T = World.TILE_SIZE;
     
     for (let x = 0; x < World.WORLD_WIDTH; x++) {
@@ -180,7 +185,7 @@ function drawWorld() {
                 }
             } else if (blockId === 'WATER') {
                 ctx.fillStyle = info.color;
-                ctx.fillRect(x * T, y * T, T, T * 0.7); // Draw water slightly shorter
+                ctx.fillRect(x * T, y * T, T, T * 0.7); 
             }
         }
     }
@@ -213,7 +218,7 @@ function drawHUD() {
     const healthPercent = player.health / player.maxHealth;
     ctx.fillStyle = '#000000';
     ctx.fillRect(10, 10, healthBarWidth, 20);
-    ctx.fillStyle = healthPercent > 0.3 ? '#00FF00' : '#FFD700'; // Green or Yellow
+    ctx.fillStyle = healthPercent > 0.3 ? '#00FF00' : '#FFD700';
     ctx.fillRect(10, 10, healthBarWidth * healthPercent, 20);
     ctx.strokeStyle = '#FFFFFF';
     ctx.strokeRect(10, 10, healthBarWidth, 20);
@@ -230,7 +235,7 @@ function drawHUD() {
         // Slot Background
         ctx.fillStyle = '#333333';
         ctx.fillRect(x, hotbarY, T - 2, T - 2);
-        ctx.strokeStyle = i === currentHotbarSlot ? '#FFD700' : '#888888'; // Gold highlight
+        ctx.strokeStyle = i === currentHotbarSlot ? '#FFD700' : '#888888';
         ctx.lineWidth = 3;
         ctx.strokeRect(x, hotbarY, T - 2, T - 2);
         
@@ -247,7 +252,8 @@ function drawHUD() {
     
     // --- Draw Inventory Screen (if open) ---
     if (isInventoryOpen) {
-        Inventory.drawInventoryScreen(ctx, canvas.width, canvas.height, player.level);
+        // NOTE: Inventory.drawInventoryScreen must be defined in inventory.js
+        if (Inventory.drawInventoryScreen) Inventory.drawInventoryScreen(ctx, canvas.width, canvas.height, player.level);
     }
 }
 
@@ -257,19 +263,19 @@ function handleKeyDown(e) {
     // 1. Inventory Toggle (E)
     if (e.key === 'e' || e.key === 'E') {
         isInventoryOpen = !isInventoryOpen;
-        if (isInventoryOpen) {
+        // NOTE: Inventory.openInventory must be defined in inventory.js
+        if (isInventoryOpen && Inventory.openInventory) {
             Inventory.openInventory(player.level);
         }
         return;
     }
 
     if (isInventoryOpen) {
-        // Handle inventory navigation keys here if needed
         return;
     }
     
     // 2. Movement (WASD)
-    const moveSpeed = 100; // Pixels per second (controlled by player.x in updatePlayer)
+    const moveSpeed = 10; // Simple pixel movement per key press (for demo)
     
     if (e.key === 'a' || e.key === 'A') {
         player.x -= moveSpeed; 
@@ -280,7 +286,7 @@ function handleKeyDown(e) {
     
     // 3. Jump (Spacebar)
     if (e.key === ' ' && player.onGround) {
-        player.vy = -500; // Initial jump velocity
+        player.vy = -500;
         player.isJumping = true;
         player.onGround = false;
     }
@@ -293,24 +299,20 @@ function handleKeyDown(e) {
 }
 
 function handleKeyUp(e) {
-    // We only track key up for movement if we implement acceleration/deceleration.
-    // Since we are using simple position update in handleKeyDown, this is often empty.
+    // Left empty for simple movement control
 }
 
 function handleMouseDown(e) {
     if (isInventoryOpen) {
-        // Handle clicks within the open inventory screen
-        Inventory.handleClick(e.offsetX, e.offsetY, player.level);
+        // NOTE: Inventory.handleClick must be defined in inventory.js
+        if (Inventory.handleClick) Inventory.handleClick(e.offsetX, e.offsetY, player.level);
         return;
     }
     
-    // Determine which block was clicked
     const clickX = e.offsetX;
     const clickY = e.offsetY;
     const blockGridX = Math.floor(clickX / World.TILE_SIZE);
     const blockGridY = Math.floor(clickY / World.TILE_SIZE);
-    
-    // Get item/tool currently selected
     const selectedItem = Inventory.getHotbarItem(currentHotbarSlot);
     
     if (e.button === 0) { // Left Click (Mine/Break)
@@ -327,8 +329,4 @@ function handleMouseUp(e) {
 }
 
 // --- EXPORTS ---
-// Export necessary components if other files need to read player state
 export { player, currentHotbarSlot };
-
-// To make this file fully self-contained for testing, you may need to define or import 
-// simple versions of the required functions from World and Inventory if they don't exist yet.
