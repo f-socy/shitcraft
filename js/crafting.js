@@ -1,4 +1,4 @@
-// /js/crafting.js - COMPLETE SCRIPT (3x3 Recipes Added)
+// /js/crafting.js - COMPLETE SCRIPT (Expanded Recipes for Iron and Survival)
 
 /*
     Format:
@@ -7,7 +7,10 @@
     id: The BLOCK ID of the required material.
 */
 export const CRAFTING_RECIPES = [
-    // --- Basic Inventory (2x2) Recipes ---
+    
+    // =======================================================
+    // --- BASIC INVENTORY (2x2) RECIPES ---
+    // =======================================================
     {
         name: "Planks from Wood",
         size: 2,
@@ -35,8 +38,28 @@ export const CRAFTING_RECIPES = [
         ],
         output: { id: 'CRAFTING_TABLE', count: 1 }
     },
+    {
+        name: "Torches",
+        size: 2,
+        ingredients: [
+            { id: 'COAL', count: 1 }, null, 
+            { id: 'STICK', count: 1 }, null
+        ],
+        output: { id: 'TORCH', count: 4 } // Assuming we add 'TORCH' block to utils.js later
+    },
+    {
+        name: "Oven/Furnace",
+        size: 2,
+        ingredients: [
+            { id: 'COBBLESTONE' }, { id: 'COBBLESTONE' },
+            { id: 'COBBLESTONE' }, { id: 'COBBLESTONE' }
+        ],
+        output: { id: 'FURNACE', count: 1 }
+    },
     
-    // --- Crafting Table (3x3) Recipes ---
+    // =======================================================
+    // --- CRAFTING TABLE (3x3) - WOOD & STONE TOOLS ---
+    // =======================================================
     {
         name: "Wooden Pickaxe (3x3)",
         size: 3,
@@ -67,4 +90,60 @@ export const CRAFTING_RECIPES = [
         ],
         output: { id: 'PICKAXE_STONE', count: 1 }
     },
-];
+    {
+        name: "Stone Axe (3x3)",
+        size: 3,
+        ingredients: [
+            { id: 'COBBLESTONE' }, { id: 'COBBLESTONE' }, null,
+            { id: 'COBBLESTONE' }, { id: 'STICK' }, null,
+            null, { id: 'STICK' }, null
+        ],
+        output: { id: 'AXE_STONE', count: 1 } // Assuming we add 'AXE_STONE' to utils.js
+    },
+
+    // =======================================================
+    // --- CRAFTING TABLE (3x3) - IRON TOOLS ---
+    // =======================================================
+    {
+        name: "Iron Pickaxe (3x3)",
+        size: 3,
+        ingredients: [
+            { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' },
+            null, { id: 'STICK' }, null,
+            null, { id: 'STICK' }, null
+        ],
+        output: { id: 'PICKAXE_IRON', count: 1 } // Assuming we add 'PICKAXE_IRON' to utils.js
+    },
+    {
+        name: "Iron Axe (3x3)",
+        size: 3,
+        ingredients: [
+            { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' }, null,
+            { id: 'IRON_INGOT' }, { id: 'STICK' }, null,
+            null, { id: 'STICK' }, null
+        ],
+        output: { id: 'AXE_IRON', count: 1 } // Assuming we add 'AXE_IRON' to utils.js
+    },
+    
+    // =======================================================
+    // --- CRAFTING TABLE (3x3) - IRON ARMOR ---
+    // =======================================================
+    {
+        name: "Iron Helmet",
+        size: 3,
+        ingredients: [
+            { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' },
+            { id: 'IRON_INGOT' }, null, { id: 'IRON_INGOT' },
+            null, null, null
+        ],
+        output: { id: 'HELMET_IRON', count: 1 } 
+    },
+    {
+        name: "Iron Chestplate",
+        size: 3,
+        ingredients: [
+            { id: 'IRON_INGOT' }, null, { id: 'IRON_INGOT' },
+            { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' },
+            { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' }
+        ],
+        output: { id: 'CHESTPLATE_IRON',
