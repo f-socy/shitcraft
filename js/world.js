@@ -1,4 +1,4 @@
-// /js/world.js - COMPLETE SCRIPT (Includes fix for getBlockAt export)
+// /js/world.js - COMPLETE SCRIPT (Includes fixes for getBlockAt and tree generation)
 import * as Player from './player.js'; 
 import * as Inventory from './inventory.js'; 
 import * as Mobs from './mobs.js';
@@ -18,23 +18,62 @@ function placeBlockSafe(x, y, id) {
     }
 }
 
-// --- Dummy Functions for Missing Files/Logic (Necessary exports to prevent crashes) ---
-function generateDungeon(x, y) { console.log(`Dungeon generated at ${x}, ${y}`); }
-function generateTrees(cols) { console.log(`Trees generated across ${cols} columns`); }
-export function updateBlockBreaks(delta) { /* Placeholder */ }
-export function updateFurnaces(delta) { /* Placeholder */ }
-export function getBreakState(x, y) { return 0; }
-export function startBlockBreak(x, y, item, level) { /* Placeholder */ }
-export function stopBlockBreak() { /* Placeholder */ }
-export function placeOrInteract(x, y, item) { /* Placeholder */ }
-// --- End Dummy Functions ---
+// --- World Content Generation ---
 
+function generateDungeon(startX, depthY) { 
+    // Minimal dungeon implementation (A simple chamber)
+    for (let x = startX - 5; x < startX + 5; x++) {
+        for (let y = depthY - 3; y < depthY + 3; y++) {
+            // Convert STONE blocks to AIR to create a room
+            if (worldMap[x] && worldMap[x][y] === 'STONE') {
+                worldMap[x][y] = 'AIR';
+            }
+        }
+    }
+    // Place a loot chest
+    placeBlockSafe(startX, depthY + 2, 'LOOT_CHEST');
+}
+
+function generateTrees(cols) { 
+    const treeTrunkHeight = 5;
+    const canopyWidth = 3;
+    
+    // Iterate through columns to plant trees
+    for (let x = 5; x < cols - 5; x += 15 + Math.floor(Math.random() * 10)) {
+        
+        // Find the surface Y coordinate
+        const surfaceY = findSurfaceY(x); 
+        
+        // Ensure we are on a grass block
+        if (worldMap[x] && worldMap[x][surfaceY + 1] === 'GRASS') { 
+            
+            // Draw the trunk
+            for (let i = 0; i < treeTrunkHeight; i++) {
+                placeBlockSafe(x, surfaceY - i, 'WOOD');
+            }
+            
+            // Draw leaves (canopy starts one block above the trunk)
+            const canopyTopY = surfaceY - treeTrunkHeight;
+            for (let y = canopyTopY - 2; y < canopyTopY + 1; y++) {
+                for (let dx = -canopyWidth; dx <= canopyWidth; dx++) {
+                    if (Math.random() > 0.1) { // 90% chance of a leaf block
+                        placeBlockSafe(x + dx, y, 'LEAVES');
+                    }
+                }
+            }
+        }
+    }
+    console.log(`Generated trees and dungeons.`); 
+}
+
+// --- Core World Generation ---
 
 export function generateWorld(seed, canvasW, canvasH, tileSize) {
     TILE_SIZE = tileSize;
     const cols = WORLD_WIDTH;
     const rows = WORLD_HEIGHT;
 
+    // Generate terrain height map using Perlin Noise
     const heightMap = generateNoiseMap(seed, cols, 0.05, 10, rows / 4); 
     const caveMap = generateNoiseMap(seed + 1, cols * 2, 0.1, 8, 1, 0.5); 
 
@@ -68,7 +107,7 @@ export function generateWorld(seed, canvasW, canvasH, tileSize) {
                 }
 
                 if (caveNoise < 0.2) {
-                    worldMap[x][y] = 'AIR'; 
+                    worldMap[x][y] = 'AIR'; // This creates the caves
                 } else {
                     worldMap[x][y] = baseBlock; 
                     
@@ -117,12 +156,18 @@ export function findSurfaceY(col) {
     return WORLD_HEIGHT / 2;
 }
 
-/**
- * Fix for Uncaught SyntaxError: getBlockAt not exported.
- */
+// Fix for Uncaught SyntaxError: getBlockAt not exported.
 export function getBlockAt(x, y) {
     if (x >= 0 && x < WORLD_WIDTH && y >= 0 && y < WORLD_HEIGHT) {
         return worldMap[x][y];
     }
     return 'DEEP_STONE'; 
 }
+
+// --- Dummy Functions for Update Loop (Necessary exports) ---
+export function updateBlockBreaks(delta) { /* Placeholder */ }
+export function updateFurnaces(delta) { /* Placeholder */ }
+export function getBreakState(x, y) { return 0; }
+export function startBlockBreak(x, y, item, level) { /* Placeholder */ }
+export function stopBlockBreak() { /* Placeholder */ }
+export function placeOrInteract(x, y, item) { /* Placeholder */ }
