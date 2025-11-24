@@ -8,25 +8,25 @@ import { getBlockInfo, TOOL_DEFINITIONS } from './utils.js';
 // --- GAME STATE VARIABLES ---
 let canvas;
 let ctx;
-// ... (Player definition and game state variables are the same)
+
 let player = {
     x: 0,
     y: 0,
     width: 28, 
     height: 30,
-    vy: 0,     
+    vy: 0,      
     isJumping: false,
     onGround: false,
     health: 20,
     maxHealth: 20,
     level: 3, 
 };
+
 let currentHotbarSlot = 0;
 let isInventoryOpen = false;
 let lastTime = 0;
 let FPS = 60;
 let frameTime = 1000 / FPS;
-
 
 // --- INITIALIZATION ---
 
@@ -52,8 +52,8 @@ export function initGame() {
     player.x = startX * World.TILE_SIZE;
     player.y = World.findSurfaceY(startX) * World.TILE_SIZE;
     
-    // 3. Initialize Inventory (This is the line that was failing!)
-    Inventory.initInventory(); // <-- NOW IT SHOULD WORK
+    // 3. Initialize Inventory (This is the line that will now work!)
+    Inventory.initInventory(); 
 
     // Give starting items for testing
     Inventory.addItemToInventory('PICKAXE_WOOD', 1);
@@ -74,7 +74,8 @@ export function initGame() {
     requestAnimationFrame(gameLoop);
 }
 
-// --- GAME LOOP (Same as before) ---
+// --- GAME LOOP ---
+
 function gameLoop(timestamp) {
     if (timestamp < lastTime + frameTime) {
         requestAnimationFrame(gameLoop);
@@ -86,14 +87,15 @@ function gameLoop(timestamp) {
     updatePlayer(delta);
     World.updateBlockBreaks(delta);
     World.updateFurnaces(delta);
-    if (Mobs.updateMobs) Mobs.updateMobs(delta); // Check for existence
+    if (Mobs.updateMobs) Mobs.updateMobs(delta); 
     
     render();
     
     requestAnimationFrame(gameLoop);
 }
 
-// --- UPDATE LOGIC (Same as before) ---
+// --- UPDATE LOGIC ---
+
 function updatePlayer(delta) {
     const gravity = 1200; 
     player.vy += gravity * delta;
@@ -119,7 +121,8 @@ function updatePlayer(delta) {
     }
 }
 
-// --- RENDERING (Same as before) ---
+// --- RENDERING & INPUTS (Omitting full code for brevity, assume previous versions are used) ---
+
 function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawWorld();
@@ -201,7 +204,7 @@ function drawHUD() {
     }
 }
 
-// --- INPUT HANDLERS (Same as before) ---
+
 function handleKeyDown(e) {
     if (e.key === 'e' || e.key === 'E') {
         isInventoryOpen = !isInventoryOpen;
