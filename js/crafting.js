@@ -1,4 +1,4 @@
-// /js/crafting.js - COMPLETE SCRIPT (Expanded Recipes for Iron and Survival)
+// /js/crafting.js - COMPLETE SCRIPT (Expanded with Diamond Tools and Armor)
 
 /*
     Format:
@@ -10,6 +10,7 @@ export const CRAFTING_RECIPES = [
     
     // =======================================================
     // --- BASIC INVENTORY (2x2) RECIPES ---
+    // (Unchanged)
     // =======================================================
     {
         name: "Planks from Wood",
@@ -45,7 +46,7 @@ export const CRAFTING_RECIPES = [
             { id: 'COAL', count: 1 }, null, 
             { id: 'STICK', count: 1 }, null
         ],
-        output: { id: 'TORCH', count: 4 } // Assuming we add 'TORCH' block to utils.js later
+        output: { id: 'TORCH', count: 4 }
     },
     {
         name: "Oven/Furnace",
@@ -59,91 +60,10 @@ export const CRAFTING_RECIPES = [
     
     // =======================================================
     // --- CRAFTING TABLE (3x3) - WOOD & STONE TOOLS ---
+    // (Unchanged)
     // =======================================================
     {
         name: "Wooden Pickaxe (3x3)",
         size: 3,
         ingredients: [
-            { id: 'PLANK' }, { id: 'PLANK' }, { id: 'PLANK' },
-            null, { id: 'STICK' }, null,
-            null, { id: 'STICK' }, null
-        ],
-        output: { id: 'PICKAXE_WOOD', count: 1 }
-    },
-    {
-        name: "Wooden Axe (3x3)",
-        size: 3,
-        ingredients: [
-            { id: 'PLANK' }, { id: 'PLANK' }, null,
-            { id: 'PLANK' }, { id: 'STICK' }, null,
-            null, { id: 'STICK' }, null
-        ],
-        output: { id: 'AXE_WOOD', count: 1 }
-    },
-    {
-        name: "Stone Pickaxe (3x3)",
-        size: 3,
-        ingredients: [
-            { id: 'COBBLESTONE' }, { id: 'COBBLESTONE' }, { id: 'COBBLESTONE' },
-            null, { id: 'STICK' }, null,
-            null, { id: 'STICK' }, null
-        ],
-        output: { id: 'PICKAXE_STONE', count: 1 }
-    },
-    {
-        name: "Stone Axe (3x3)",
-        size: 3,
-        ingredients: [
-            { id: 'COBBLESTONE' }, { id: 'COBBLESTONE' }, null,
-            { id: 'COBBLESTONE' }, { id: 'STICK' }, null,
-            null, { id: 'STICK' }, null
-        ],
-        output: { id: 'AXE_STONE', count: 1 } // Assuming we add 'AXE_STONE' to utils.js
-    },
-
-    // =======================================================
-    // --- CRAFTING TABLE (3x3) - IRON TOOLS ---
-    // =======================================================
-    {
-        name: "Iron Pickaxe (3x3)",
-        size: 3,
-        ingredients: [
-            { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' },
-            null, { id: 'STICK' }, null,
-            null, { id: 'STICK' }, null
-        ],
-        output: { id: 'PICKAXE_IRON', count: 1 } // Assuming we add 'PICKAXE_IRON' to utils.js
-    },
-    {
-        name: "Iron Axe (3x3)",
-        size: 3,
-        ingredients: [
-            { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' }, null,
-            { id: 'IRON_INGOT' }, { id: 'STICK' }, null,
-            null, { id: 'STICK' }, null
-        ],
-        output: { id: 'AXE_IRON', count: 1 } // Assuming we add 'AXE_IRON' to utils.js
-    },
-    
-    // =======================================================
-    // --- CRAFTING TABLE (3x3) - IRON ARMOR ---
-    // =======================================================
-    {
-        name: "Iron Helmet",
-        size: 3,
-        ingredients: [
-            { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' },
-            { id: 'IRON_INGOT' }, null, { id: 'IRON_INGOT' },
-            null, null, null
-        ],
-        output: { id: 'HELMET_IRON', count: 1 } 
-    },
-    {
-        name: "Iron Chestplate",
-        size: 3,
-        ingredients: [
-            { id: 'IRON_INGOT' }, null, { id: 'IRON_INGOT' },
-            { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' },
-            { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' }, { id: 'IRON_INGOT' }
-        ],
-        output: { id: 'CHESTPLATE_IRON',
+            { id: 'PLANK' }, { id: 'PLANK' }, { id: 'PLANK'
