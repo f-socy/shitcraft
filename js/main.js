@@ -80,10 +80,10 @@ function gameLoop(currentTime) {
     const cameraX = -playerState.x + canvas.width / 2; 
     const cameraY = -playerState.y + canvas.height / 2;
     
-    World.drawWorld(ctx, TILE_SIZE, cameraX, cameraY, cycleProgress); // Pass cycle for tinting
+    World.drawWorld(ctx, TILE_SIZE, cameraX, cameraY, cycleProgress); 
     Mobs.drawMobs(ctx, TILE_SIZE, cameraX, cameraY);
     Player.drawPlayer(ctx, TILE_SIZE, cameraX, cameraY);
-    Inventory.drawUI(ctx, canvas.width, canvas.height); // Draw hotbar/inventory
+    Inventory.drawUI(ctx, canvas.width, canvas.height); 
 
     requestAnimationFrame(gameLoop);
 }
