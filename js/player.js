@@ -1,283 +1,334 @@
-// /js/player.js - COMPLETE SCRIPT (Leveling and XP)
-import * as World from './world.js';
-import * as Inventory from './inventory.js'; 
-import { getBlockAt, updateBlockBreak, startBlockBreak, stopBlockBreak, placeBlock } from './world.js';
-import { getBlockInfo } from './utils.js';
+// /js/player.js - THE MAIN GAME ENGINE FILE
 
+import * as World from './world.js';
+import * as Inventory from './inventory.js';
+import * as Mobs from './mobs.js';
+import { getBlockInfo, TOOL_DEFINITIONS } from './utils.js';
+
+// --- GAME STATE VARIABLES ---
+let canvas;
+let ctx;
+
+// Player Position and Dimensions
 let player = {
-    x: 0, y: 0, width: 20, height: 40,
-    moveSpeed: 200, velX: 0, velY: 0,
-    isJumping: false, gravity: 800, jumpForce: 400,
-    maxHealth: 20, health: 20, 
-    maxHunger: 20, hunger: 20, 
-    hungerDrainTimer: 0,
-    armor: { helmet: null, chestplate: null, leggings: null, boots: null },
-    // NEW: Leveling System
-    level: 0,
-    xp: 0,
-    xpToNextLevel: 10 // Start with 10 XP needed
+    x: 0,
+    y: 0,
+    width: 28, // Slightly smaller than TILE_SIZE for movement
+    height: 30,
+    vy: 0,      // Vertical velocity (for jumping/falling)
+    isJumping: false,
+    onGround: false,
+    
+    // Core Progression and Status
+    health: 20,
+    maxHealth: 20,
+    level: 3, // Start at level 3 to test Iron/Diamond tools
 };
 
-let keyState = {};
-let TILE_SIZE = 32;
-let isBreaking = false;
-let targetBlock = null;
+// Inventory State
+let currentHotbarSlot = 0;
+let isInventoryOpen = false;
 
-export function initPlayer(startX, startY, tileSize) {
-    player.x = startX;
-    player.y = startY;
-    TILE_SIZE = tileSize;
-    document.onmousedown = handleMouseInput;
-    document.onmouseup = handleMouseInput;
-    document.oncontextmenu = (e) => e.preventDefault();
-}
+// Time and Rendering
+let lastTime = 0;
+let FPS = 60;
+let frameTime = 1000 / FPS;
 
-export function getPlayerState() { return player; }
-export function loadPlayerState(state) { player = state; }
+// --- INITIALIZATION ---
 
-export function handleInput(event) {
-    keyState[event.key.toLowerCase()] = (event.type === 'keydown');
-
-    if (event.type === 'keydown') {
-        if (event.key.toLowerCase() === ' ') { // Jump
-            if (!player.isJumping) {
-                player.velY = -player.jumpForce;
-                player.isJumping = true;
-            }
-        }
-        if (event.key.toLowerCase() === 'e') {
-            Inventory.toggleInventory();
-        }
+/**
+ * Public function called to set up the game environment.
+ * Exported to be called from index.html.
+ */
+export function initGame() {
+    canvas = document.getElementById('gameCanvas');
+    if (!canvas) {
+        console.error("Canvas element 'gameCanvas' not found!");
+        return;
     }
-}
-
-function handleMouseInput(event) {
-    const worldX = player.x + (event.clientX - window.innerWidth / 2);
-    const worldY = player.y + (event.clientY - window.innerHeight / 2);
-    const block = getBlockAt(worldX, worldY);
-    targetBlock = block; 
-
-    if (!block) return;
-
-    if (event.type === 'mousedown') {
-        if (event.button === 0) { // Left Click (Start Breaking)
-            isBreaking = true;
-            startBlockBreak(block.x, block.y);
-        } else if (event.button === 2) { // Right Click (Placing/Interacting)
-            event.preventDefault(); 
-            
-            if (block.id === 'FURNACE' || block.id === 'CRAFTING_TABLE' || block.id === 'LOOT_CHEST') {
-                World.openInteractable(block.x, block.y, block.id);
-                Inventory.toggleInventory();
-                return;
-            }
-            
-            const item = Inventory.getSelectedItem();
-            if (item) {
-                // Check for tool level gate (prevents placing blocks that act as tools)
-                if (item.type === 'TOOL' && item.requiredLevel > player.level) {
-                     console.log(`Requires Level ${item.requiredLevel} to use this tool!`);
-                     return;
-                }
-                
-                if (item.type === 'BLOCK') {
-                    const placeX = block.x;
-                    const placeY = block.y;
-                    placeBlock(placeX, placeY, item.id);
-                    // TODO: Deduct item from inventory
-                } else if (item.type === 'FOOD') {
-                    consumeItem();
-                } else if (item.type === 'ARMOR') {
-                    equipArmor(item);
-                    // TODO: Deduct item from inventory
-                }
-            }
-        }
-    } else if (event.type === 'mouseup') {
-        if (event.button === 0) { // Left Click (Stop Breaking)
-            isBreaking = false;
-            World.stopBlockBreak(block.x, block.y);
-        }
-    }
-}
-
-function consumeItem() {
-    const item = Inventory.getSelectedItem();
-    if (item && item.type === 'FOOD') {
-        player.hunger = Math.min(player.maxHunger, player.hunger + item.restoresHunger);
-        player.health = Math.min(player.maxHealth, player.health + 4); 
-        // TODO: Remove item from inventory
-    }
-}
-
-export function equipArmor(armorItem) {
-    if (armorItem.type !== 'ARMOR') return;
-    const slot = armorItem.slot;
     
-    const oldItem = player.armor[slot];
-    if (oldItem) {
-        Inventory.addItem(oldItem.id, 1);
-    }
+    // Calculate size based on world dimensions
+    const CANVAS_WIDTH = World.WORLD_WIDTH * World.TILE_SIZE;
+    const CANVAS_HEIGHT = World.WORLD_HEIGHT * World.TILE_SIZE;
+    
+    canvas.width = CANVAS_WIDTH;
+    canvas.height = CANVAS_HEIGHT;
+    ctx = canvas.getContext('2d');
+    
+    // 1. Generate the world
+    World.generateWorld(1234, CANVAS_WIDTH, CANVAS_HEIGHT, World.TILE_SIZE);
+    
+    // 2. Set starting position (above the first piece of air)
+    const startX = Math.floor(World.WORLD_WIDTH / 2);
+    player.x = startX * World.TILE_SIZE;
+    player.y = World.findSurfaceY(startX) * World.TILE_SIZE;
+    
+    // 3. Initialize Inventory (Give starting items for testing)
+    Inventory.initInventory();
+    Inventory.addItemToInventory('PICKAXE_WOOD', 1);
+    Inventory.addItemToInventory('AXE_WOOD', 1);
+    Inventory.addItemToInventory('DIAMOND', 10);
+    Inventory.addItemToInventory('IRON_INGOT', 20);
+    Inventory.addItemToInventory('COAL', 5);
 
-    player.armor[slot] = armorItem;
+    // 4. Set up Input Listeners
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+    canvas.addEventListener('mousedown', handleMouseDown);
+    canvas.addEventListener('mouseup', handleMouseUp);
+
+    // 5. Start the main game loop
+    console.log(`Game initialized. Player starting at X:${player.x}, Y:${player.y}`);
+    requestAnimationFrame(gameLoop);
 }
 
-// NEW: Function to add XP and handle leveling
-export function addXP(amount) {
-    player.xp += amount;
-    console.log(`Gained ${amount} XP. Total: ${player.xp}`);
+// --- GAME LOOP ---
 
-    while (player.xp >= player.xpToNextLevel) {
-        player.xp -= player.xpToNextLevel;
-        player.level += 1;
-        
-        // Formula for next level: XP_to_Level = 10 * (Level + 1)^2
-        player.xpToNextLevel = 10 * Math.pow(player.level + 1, 2);
-        
-        console.log(`PLAYER LEVELED UP! New Level: ${player.level}. Next XP: ${player.xpToNextLevel}`);
-        // Optionally, give player health boost or stat increase here
-        player.maxHealth += 2;
-        player.health = player.maxHealth;
+function gameLoop(timestamp) {
+    if (timestamp < lastTime + frameTime) {
+        requestAnimationFrame(gameLoop);
+        return;
     }
+    const delta = (timestamp - lastTime) / 1000; // Time in seconds
+    lastTime = timestamp;
+
+    // 1. Update Game State
+    updatePlayer(delta);
+    World.updateBlockBreaks(delta);
+    World.updateFurnaces(delta);
+    Mobs.updateMobs(delta);
+
+    // 2. Render everything
+    render();
+    
+    requestAnimationFrame(gameLoop);
 }
 
+// --- UPDATE LOGIC ---
 
-export function updatePlayer(deltaTime) {
-    // ... (Hunger and Movement Physics logic remains the same)
-    let currentMoveSpeed = player.moveSpeed;
-    let currentJumpForce = player.jumpForce;
+function updatePlayer(delta) {
+    // 1. Apply Gravity
+    const gravity = 1200; // Pixels per second squared
+    player.vy += gravity * delta;
     
-    // --- Hunger and Health Update ---
-    player.hungerDrainTimer += deltaTime;
-    if (player.hungerDrainTimer >= 10.0) { 
-        player.hunger = Math.max(0, player.hunger - 1);
-        player.hungerDrainTimer = 0;
-    }
+    // 2. Calculate New Position
+    const newY = player.y + player.vy * delta;
+    const newX = player.x;
 
-    if (player.hunger >= 18 && player.health < player.maxHealth) {
-        if (player.healthRegenTimer >= 5.0) {
-            player.health = Math.min(player.maxHealth, player.health + 1);
-            player.healthRegenTimer = 0;
-        } else {
-            player.healthRegenTimer = (player.healthRegenTimer || 0) + deltaTime;
-        }
-    } else if (player.hunger === 0) {
-        if (player.starveDamageTimer >= 10.0) {
-            takeDamage(1);
-            player.starveDamageTimer = 0;
-        } else {
-            player.starveDamageTimer = (player.starveDamageTimer || 0) + deltaTime;
-        }
-    }
-
-    // --- Movement Physics (Same as before, using water logic) ---
-    const blockAtHead = getBlockAt(player.x, player.y);
-    const blockAtChest = getBlockAt(player.x, player.y + player.height / 2);
+    // 3. Collision Detection (Y-axis)
+    const blockBottomY = Math.floor((newY + player.height) / World.TILE_SIZE);
+    const blockMidX = Math.floor((player.x + player.width / 2) / World.TILE_SIZE);
     
-    if (blockAtHead && blockAtHead.id === 'WATER' || blockAtChest && blockAtChest.id === 'WATER') {
-        currentMoveSpeed *= 0.3;
-        currentJumpForce *= 0.5;
-        player.gravity = 400;
-        player.velY *= 0.9;
+    const blockBelow = World.worldMap[blockMidX] ? getBlockInfo(World.worldMap[blockMidX][blockBottomY]) : null;
+
+    if (blockBelow && blockBelow.type === 'BLOCK') {
+        player.onGround = true;
+        player.vy = 0;
+        player.y = (blockBottomY * World.TILE_SIZE) - player.height;
     } else {
-        player.gravity = 800;
-    }
-
-    player.velX = 0;
-    if (keyState['a']) player.velX = -currentMoveSpeed;
-    if (keyState['d']) player.velX = currentMoveSpeed;
-
-    if (keyState[' '] && !player.isJumping) {
-        player.velY = -currentJumpForce;
-        player.isJumping = true;
-    }
-
-    if (player.isJumping || player.velY < 0) {
-        player.velY += player.gravity * deltaTime;
-    }
-
-    const newX = player.x + player.velX * deltaTime;
-    const newY = player.y + player.velY * deltaTime;
-    
-    player.x = newX;
-    
-    let blockBelow = getBlockAt(player.x, player.y + player.height + 1);
-    if (blockBelow && blockBelow.id !== 'AIR' && blockBelow.id !== 'WATER') {
-        player.y = blockBelow.y * TILE_SIZE - player.height;
-        player.velY = 0;
-        player.isJumping = false;
-    } else {
+        player.onGround = false;
         player.y = newY;
+    }
+    
+    // Temporary Screen Bounds Check
+    if (player.y + player.height > canvas.height) {
+        player.y = canvas.height - player.height;
+        player.vy = 0;
+        player.onGround = true;
+    }
+}
+
+// --- RENDERING ---
+
+function render() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 1. Draw World
+    drawWorld();
+
+    // 2. Draw Mobs
+    Mobs.drawMobs(ctx, World.TILE_SIZE);
+
+    // 3. Draw Player
+    drawPlayer();
+
+    // 4. Draw HUD/UI (Health, Hotbar, Inventory)
+    drawHUD();
+}
+
+function drawWorld() {
+    // Basic camera offset (center the camera on the player, but simplified here)
+    // For now, draw the entire world map
+    const T = World.TILE_SIZE;
+    
+    for (let x = 0; x < World.WORLD_WIDTH; x++) {
+        for (let y = 0; y < World.WORLD_HEIGHT; y++) {
+            const blockId = World.worldMap[x][y];
+            const info = getBlockInfo(blockId);
+
+            if (blockId !== 'AIR' && blockId !== 'WATER') {
+                ctx.fillStyle = info.color;
+                ctx.fillRect(x * T, y * T, T, T);
+
+                // Draw breaking animation
+                const breakState = World.getBreakState(x, y);
+                if (breakState > 0) {
+                    ctx.globalAlpha = breakState * 0.7; // Fade effect
+                    ctx.fillStyle = 'rgba(255, 255, 255)';
+                    ctx.fillRect(x * T, y * T, T, T);
+                    ctx.globalAlpha = 1.0;
+                }
+            } else if (blockId === 'WATER') {
+                ctx.fillStyle = info.color;
+                ctx.fillRect(x * T, y * T, T, T * 0.7); // Draw water slightly shorter
+            }
+        }
+    }
+}
+
+function drawPlayer() {
+    // Player body
+    ctx.fillStyle = '#FF0000'; // Red for the player cube
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+    
+    // Player center dot
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(player.x + player.width/2 - 2, player.y + player.height/2 - 2, 4, 4);
+
+    // Draw the currently selected tool (Simple visualization)
+    const selectedItem = Inventory.getHotbarItem(currentHotbarSlot);
+    if (selectedItem && getBlockInfo(selectedItem.id).type === 'TOOL') {
+        const toolInfo = TOOL_DEFINITIONS[selectedItem.id];
+        ctx.fillStyle = toolInfo.color;
+        // Draw a small icon near the player's hand
+        ctx.fillRect(player.x + player.width, player.y + player.height/4, 8, 8);
+    }
+}
+
+function drawHUD() {
+    const T = World.TILE_SIZE;
+    
+    // --- Draw Health Bar (Top Left) ---
+    const healthBarWidth = 150;
+    const healthPercent = player.health / player.maxHealth;
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(10, 10, healthBarWidth, 20);
+    ctx.fillStyle = healthPercent > 0.3 ? '#00FF00' : '#FFD700'; // Green or Yellow
+    ctx.fillRect(10, 10, healthBarWidth * healthPercent, 20);
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.strokeRect(10, 10, healthBarWidth, 20);
+    
+    // --- Draw Hotbar (Bottom Center) ---
+    const hotbarY = canvas.height - T * 1.5;
+    const hotbarStart = (canvas.width / 2) - (9 * T / 2);
+    
+    for (let i = 0; i < 9; i++) {
+        const x = hotbarStart + i * T;
+        const item = Inventory.getHotbarItem(i);
+        const info = item ? getBlockInfo(item.id) : null;
+        
+        // Slot Background
+        ctx.fillStyle = '#333333';
+        ctx.fillRect(x, hotbarY, T - 2, T - 2);
+        ctx.strokeStyle = i === currentHotbarSlot ? '#FFD700' : '#888888'; // Gold highlight
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x, hotbarY, T - 2, T - 2);
+        
+        // Item Icon and Count
+        if (info) {
+            ctx.fillStyle = info.color;
+            ctx.fillRect(x + 4, hotbarY + 4, T - 10, T - 10);
+            
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '10px Arial';
+            ctx.fillText(item.count, x + T - 15, hotbarY + T - 5);
+        }
+    }
+    
+    // --- Draw Inventory Screen (if open) ---
+    if (isInventoryOpen) {
+        Inventory.drawInventoryScreen(ctx, canvas.width, canvas.height, player.level);
+    }
+}
+
+// --- INPUT HANDLERS ---
+
+function handleKeyDown(e) {
+    // 1. Inventory Toggle (E)
+    if (e.key === 'e' || e.key === 'E') {
+        isInventoryOpen = !isInventoryOpen;
+        if (isInventoryOpen) {
+            Inventory.openInventory(player.level);
+        }
+        return;
+    }
+
+    if (isInventoryOpen) {
+        // Handle inventory navigation keys here if needed
+        return;
+    }
+    
+    // 2. Movement (WASD)
+    const moveSpeed = 100; // Pixels per second (controlled by player.x in updatePlayer)
+    
+    if (e.key === 'a' || e.key === 'A') {
+        player.x -= moveSpeed; 
+    }
+    if (e.key === 'd' || e.key === 'D') {
+        player.x += moveSpeed;
+    }
+    
+    // 3. Jump (Spacebar)
+    if (e.key === ' ' && player.onGround) {
+        player.vy = -500; // Initial jump velocity
         player.isJumping = true;
-    }
-
-    // --- Block Breaking Update ---
-    if (isBreaking && targetBlock) {
-        World.updateBlockBreak(targetBlock.x, targetBlock.y, deltaTime);
-    }
-}
-
-export function takeDamage(damage) {
-    let defense = 0;
-    const armorPieces = Object.values(player.armor).filter(a => a);
-    
-    for (const piece of armorPieces) {
-        defense += piece.defense || 0;
+        player.onGround = false;
     }
     
-    const finalDamage = Math.max(1, damage - defense);
-    
-    player.health -= finalDamage;
-    if (player.health <= 0) {
-        player.health = 0;
-        // console.log("Player Died! Needs Respawn.");
+    // 4. Hotbar Selection (1-9)
+    const slot = parseInt(e.key);
+    if (!isNaN(slot) && slot >= 1 && slot <= 9) {
+        currentHotbarSlot = slot - 1;
     }
 }
 
-export function drawPlayer(ctx, tileSize, cameraX, cameraY) {
-    const screenX = player.x + cameraX;
-    const screenY = player.y + cameraY;
-    
-    ctx.fillStyle = 'red'; 
-    ctx.fillRect(screenX, screenY, player.width, player.height);
-    
-    // --- Draw Health, Hunger, and XP Bars (Screen Space) ---
-    const barWidth = 100;
-    const barHeight = 10;
-    const barX = ctx.canvas.width - barWidth - 20;
-    
-    // 1. Health Bar
-    let barY = 20;
-    const currentHealthRatio = player.health / player.maxHealth;
-    ctx.strokeStyle = 'black';
-    ctx.strokeRect(barX, barY, barWidth, barHeight);
-    ctx.fillStyle = 'red';
-    ctx.fillRect(barX, barY, barWidth * currentHealthRatio, barHeight);
-    ctx.fillStyle = 'white';
-    ctx.font = '12px Arial';
-    ctx.fillText(`HP: ${player.health}/${player.maxHealth}`, barX, barY - 5);
-
-    // 2. Hunger Bar
-    barY += barHeight + 5;
-    const currentHungerRatio = player.hunger / player.maxHunger;
-    ctx.strokeStyle = 'black';
-    ctx.strokeRect(barX, barY, barWidth, barHeight);
-    ctx.fillStyle = 'orange';
-    ctx.fillRect(barX, barY, barWidth * currentHungerRatio, barHeight);
-    ctx.fillStyle = 'white';
-    ctx.fillText(`Food: ${player.hunger}/${player.maxHunger}`, barX, barY - 5);
-
-    // 3. XP Bar
-    const xpBarY = ctx.canvas.height - 15;
-    const xpBarW = ctx.canvas.width;
-    const currentXPRatio = player.xp / player.xpToNextLevel;
-    
-    ctx.fillStyle = '#00FF00'; // Lime green for XP
-    ctx.fillRect(0, xpBarY, xpBarW * currentXPRatio, 5);
-    
-    ctx.fillStyle = 'white';
-    ctx.font = '10px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(`Level ${player.level}`, xpBarW / 2, xpBarY - 5);
-    ctx.textAlign = 'left';
+function handleKeyUp(e) {
+    // We only track key up for movement if we implement acceleration/deceleration.
+    // Since we are using simple position update in handleKeyDown, this is often empty.
 }
+
+function handleMouseDown(e) {
+    if (isInventoryOpen) {
+        // Handle clicks within the open inventory screen
+        Inventory.handleClick(e.offsetX, e.offsetY, player.level);
+        return;
+    }
+    
+    // Determine which block was clicked
+    const clickX = e.offsetX;
+    const clickY = e.offsetY;
+    const blockGridX = Math.floor(clickX / World.TILE_SIZE);
+    const blockGridY = Math.floor(clickY / World.TILE_SIZE);
+    
+    // Get item/tool currently selected
+    const selectedItem = Inventory.getHotbarItem(currentHotbarSlot);
+    
+    if (e.button === 0) { // Left Click (Mine/Break)
+        World.startBlockBreak(blockGridX, blockGridY, selectedItem, player.level);
+    } else if (e.button === 2) { // Right Click (Place/Interact)
+        World.placeOrInteract(blockGridX, blockGridY, selectedItem);
+    }
+}
+
+function handleMouseUp(e) {
+    if (e.button === 0) {
+        World.stopBlockBreak();
+    }
+}
+
+// --- EXPORTS ---
+// Export necessary components if other files need to read player state
+export { player, currentHotbarSlot };
+
+// To make this file fully self-contained for testing, you may need to define or import 
+// simple versions of the required functions from World and Inventory if they don't exist yet.
