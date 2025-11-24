@@ -120,3 +120,12 @@ export function findSurfaceY(col) {
     }
     return WORLD_HEIGHT / 2;
 }
+// Add this function near the bottom of /js/world.js
+// It safely returns the ID of the block at a given coordinate.
+export function getBlockAt(x, y) {
+    if (x >= 0 && x < WORLD_WIDTH && y >= 0 && y < WORLD_HEIGHT) {
+        return worldMap[x][y];
+    }
+    // Return a solid block type outside the bounds to prevent mobs/player from falling forever
+    return 'DEEP_STONE'; 
+}
