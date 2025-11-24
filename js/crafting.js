@@ -1,12 +1,10 @@
-// /js/crafting.js - NEW FILE
+// /js/crafting.js - COMPLETE SCRIPT
 
 /*
     Format:
     size: 2 (2x2 grid) or 3 (3x3 Crafting Table grid)
     ingredients: Array of 4 (2x2) or 9 (3x3) items, in row-major order.
     id: The BLOCK ID of the required material.
-    
-    Note: For 2x2, a null means an empty slot in the inventory crafting grid.
 */
 export const CRAFTING_RECIPES = [
     // --- Basic Inventory (2x2) Recipes ---
@@ -37,19 +35,14 @@ export const CRAFTING_RECIPES = [
         ],
         output: { id: 'CRAFTING_TABLE', count: 1 }
     },
-    
-    // --- Tools (Requires 3x3 Crafting Table, not implemented yet) ---
-    // Example: Wooden Pickaxe
-    /*
+    // Example Tool Crafting (2x2 for PoC)
     {
         name: "Wooden Pickaxe",
-        size: 3,
+        size: 2,
         ingredients: [
-            { id: 'PLANK' }, { id: 'PLANK' }, { id: 'PLANK' },
-            null, { id: 'STICK' }, null,
-            null, { id: 'STICK' }, null
+            { id: 'PLANK', count: 1 }, { id: 'PLANK', count: 1 },
+            { id: 'STICK', count: 1 }, { id: 'STICK', count: 1 }
         ],
         output: { id: 'PICKAXE_WOOD', count: 1 }
     }
-    */
 ];
