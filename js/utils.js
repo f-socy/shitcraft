@@ -1,4 +1,99 @@
-// /js/utils.js - COMPLETE SCRIPT (Added LEAVES, Food/Armor Data)
+// /js/utils.js - COMPLETE SCRIPT (Added A* Helpers, XP/Loot/Level Data)
+
+// --- A* Pathfinding Helpers ---
+class PriorityQueue {
+    constructor() {
+        this.values = [];
+    }
+    enqueue(element, priority) {
+        this.values.push({element, priority});
+        this.sort();
+    }
+    dequeue() {
+        return this.values.shift();
+    }
+    sort() {
+        this.values.sort((a, b) => a.priority - b.priority);
+    }
+    isEmpty() {
+        return this.values.length === 0;
+    }
+}
+
+export class PathNode {
+    constructor(x, y, g = 0, h = 0, parent = null) {
+        this.x = x;
+        this.y = y;
+        this.g = g; // Cost from start
+        this.h = h; // Estimated cost to goal (Heuristic)
+        this.f = g + h; // Total cost
+        this.parent = parent;
+    }
+
+    // Static method for A* pathfinding
+    static findPath(start, end, worldMap) {
+        // Simple A* implementation (PoC)
+        const openList = new PriorityQueue();
+        const startNode = new PathNode(start.x, start.y, 0, PathNode.heuristic(start, end));
+        openList.enqueue(startNode, startNode.f);
+        
+        const closedList = new Map();
+        
+        while (!openList.isEmpty()) {
+            const currentEntry = openList.dequeue();
+            const currentNode = currentEntry.element;
+            
+            // Reached the end
+            if (currentNode.x === end.x && currentNode.y === end.y) {
+                const path = [];
+                let temp = currentNode;
+                while (temp) {
+                    path.push({ x: temp.x, y: temp.y });
+                    temp = temp.parent;
+                }
+                return path.reverse();
+            }
+
+            closedList.set(`${currentNode.x},${currentNode.y}`, currentNode);
+
+            // Check neighbors (up, down, left, right)
+            const neighbors = [
+                { x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }
+            ];
+
+            for (const move of neighbors) {
+                const neighborX = currentNode.x + move.x;
+                const neighborY = currentNode.y + move.y;
+                const key = `${neighborX},${neighborY}`;
+
+                // Check bounds and collision
+                if (neighborX < 0 || neighborX >= worldMap.length || 
+                    neighborY < 0 || neighborY >= worldMap[0].length) continue;
+                
+                const blockId = worldMap[neighborX][neighborY];
+                const blockInfo = getBlockInfo(blockId);
+                
+                // Mob cannot pathfind through solid blocks
+                if (blockInfo.type === 'BLOCK' || blockInfo.type === 'INTERACTABLE') continue;
+                
+                if (closedList.has(key)) continue;
+
+                const g = currentNode.g + 1; // Movement cost is 1
+                const h = PathNode.heuristic({ x: neighborX, y: neighborY }, end);
+                const neighborNode = new PathNode(neighborX, neighborY, g, h, currentNode);
+                
+                openList.enqueue(neighborNode, neighborNode.f);
+            }
+        }
+        return null; // No path found
+    }
+
+    // Manhattan distance heuristic
+    static heuristic(pos1, pos2) {
+        return Math.abs(pos1.x - pos2.x) + Math.abs(pos1.y - pos2.y);
+    }
+}
+
 
 // --- Perlin Noise Generator (Simplified) ---
 function random(seed) {
@@ -37,13 +132,25 @@ export function generateNoiseMap(seed, count, scale, octaves, amplitude, persist
 
 // --- Tool Definitions (for durability/efficiency) ---
 export const TOOL_DEFINITIONS = {
-    // Type: PICKAXE, AXE, SHOVEL
-    // Efficiency: Multiplier for break time (lower = faster break time)
-    // MaxDurability: How many times it can be used before breaking
-    'PICKAXE_WOOD': { toolType: 'PICKAXE', efficiency: 0.5, maxDurability: 60, color: '#A0522D' },
-    'PICKAXE_STONE': { toolType: 'PICKAXE', efficiency: 0.3, maxDurability: 132, color: '#778899' },
-    'AXE_WOOD': { toolType: 'AXE', efficiency: 0.5, maxDurability: 60, color: '#A0522D' },
-    'SHOVEL_WOOD': { toolType: 'SHOVEL', efficiency: 0.5, maxDurability: 60, color: '#A0522D' },
+    // NEW: requiredLevel to gate access
+    'PICKAXE_WOOD': { toolType: 'PICKAXE', efficiency: 0.5, maxDurability: 60, color: '#A0522D', requiredLevel: 0 },
+    'PICKAXE_STONE': { toolType: 'PICKAXE', efficiency: 0.3, maxDurability: 132, color: '#778899', requiredLevel: 1 },
+    'AXE_WOOD': { toolType: 'AXE', efficiency: 0.5, maxDurability: 60, color: '#A0522D', requiredLevel: 0 },
+    'SHOVEL_WOOD': { toolType: 'SHOVEL', efficiency: 0.5, maxDurability: 60, color: '#A0522D', requiredLevel: 0 },
+};
+
+// --- Mob Definitions (for Loot and XP) ---
+export const MOB_DEFINITIONS = {
+    'SHEEP': { 
+        type: 'passive', color: '#FFFFFF', health: 10, damage: 0, 
+        drops: [{id: 'MUTTON', count: 1, chance: 1.0}], // 100% chance for 1 mutton
+        xp: 3 
+    },
+    'ZOMBIE': { 
+        type: 'hostile', color: '#006400', health: 20, damage: 2, 
+        drops: [{id: 'ROTTEN_FLESH', count: 2, chance: 0.7}], // 70% chance for up to 2
+        xp: 5 
+    }
 };
 
 // --- Block & Item Definitions ---
@@ -54,7 +161,7 @@ export const WORLD_BLOCKS = {
     'DIRT': { color: '#8B4513', name: 'Dirt', hardness: 0.8, bestTool: 'SHOVEL', type: 'BLOCK' },
     'STONE': { color: '#778899', name: 'Stone', hardness: 3.0, bestTool: 'PICKAXE', type: 'BLOCK', drops: [{ id: 'COBBLESTONE', count: 1 }] },
     'WOOD': { color: '#964B00', name: 'Wood Log', hardness: 2.0, bestTool: 'AXE', type: 'BLOCK', drops: [{ id: 'WOOD', count: 1 }] },
-    'LEAVES': { color: '#228B22', name: 'Leaves', hardness: 0.2, bestTool: 'AXE', type: 'BLOCK', drops: [{ id: 'STICK', count: 0.5 }] }, // Chance drop
+    'LEAVES': { color: '#228B22', name: 'Leaves', hardness: 0.2, bestTool: 'AXE', type: 'BLOCK', drops: [{ id: 'STICK', count: 0.2 }] }, 
     'COAL_ORE': { color: '#444444', name: 'Coal Ore', hardness: 4.0, bestTool: 'PICKAXE', type: 'BLOCK', drops: [{ id: 'COAL', count: 1 }] },
     'IRON_ORE': { 
         color: '#B5A642', name: 'Iron Ore', hardness: 5.0, bestTool: 'PICKAXE', type: 'BLOCK', 
@@ -66,6 +173,11 @@ export const WORLD_BLOCKS = {
     },
     'FURNACE': { color: '#696969', name: 'Furnace', hardness: 3.5, bestTool: 'PICKAXE', type: 'INTERACTABLE' },
     'CRAFTING_TABLE': { color: '#A0522D', name: 'Crafting Table', hardness: 2.5, bestTool: 'AXE', type: 'INTERACTABLE' },
+    
+    // NEW: Dungeon Blocks
+    'DUNGEON_STONE': { color: '#36454F', name: 'Dungeon Stone', hardness: 10.0, bestTool: 'PICKAXE', type: 'BLOCK', requiredLevel: 3 }, // Requires level 3 tool
+    'LOOT_CHEST': { color: '#FFA500', name: 'Loot Chest', hardness: 1.0, bestTool: 'AXE', type: 'INTERACTABLE', drops: [{id: 'IRON_INGOT', count: 5, chance: 1.0}] },
+    'MOB_SPAWNER': { color: '#555555', name: 'Mob Spawner', hardness: 1000.0, bestTool: 'PICKAXE', type: 'INTERACTABLE' },
     
     // Crafting Items
     'PLANK': { color: '#D2B48C', name: 'Wooden Plank', hardness: 0, bestTool: null, type: 'BLOCK' },
@@ -83,6 +195,10 @@ export const WORLD_BLOCKS = {
     'LEGGINGS_IRON': { color: '#C0C0C0', name: 'Iron Leggings', defense: 4, type: 'ARMOR', slot: 'leggings' },
     'BOOTS_IRON': { color: '#C0C0C0', name: 'Iron Boots', defense: 2, type: 'ARMOR', slot: 'boots' },
 };
+
+export function getMobInfo(id) {
+    return MOB_DEFINITIONS[id];
+}
 
 export function getBlockInfo(id) {
     if (TOOL_DEFINITIONS[id]) {
