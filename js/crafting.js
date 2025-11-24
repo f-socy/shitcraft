@@ -1,4 +1,4 @@
-// /js/crafting.js - COMPLETE SCRIPT
+// /js/crafting.js - COMPLETE SCRIPT (3x3 Recipes Added)
 
 /*
     Format:
@@ -35,14 +35,36 @@ export const CRAFTING_RECIPES = [
         ],
         output: { id: 'CRAFTING_TABLE', count: 1 }
     },
-    // Example Tool Crafting (2x2 for PoC)
+    
+    // --- Crafting Table (3x3) Recipes ---
     {
-        name: "Wooden Pickaxe",
-        size: 2,
+        name: "Wooden Pickaxe (3x3)",
+        size: 3,
         ingredients: [
-            { id: 'PLANK', count: 1 }, { id: 'PLANK', count: 1 },
-            { id: 'STICK', count: 1 }, { id: 'STICK', count: 1 }
+            { id: 'PLANK' }, { id: 'PLANK' }, { id: 'PLANK' },
+            null, { id: 'STICK' }, null,
+            null, { id: 'STICK' }, null
         ],
         output: { id: 'PICKAXE_WOOD', count: 1 }
-    }
+    },
+    {
+        name: "Wooden Axe (3x3)",
+        size: 3,
+        ingredients: [
+            { id: 'PLANK' }, { id: 'PLANK' }, null,
+            { id: 'PLANK' }, { id: 'STICK' }, null,
+            null, { id: 'STICK' }, null
+        ],
+        output: { id: 'AXE_WOOD', count: 1 }
+    },
+    {
+        name: "Stone Pickaxe (3x3)",
+        size: 3,
+        ingredients: [
+            { id: 'COBBLESTONE' }, { id: 'COBBLESTONE' }, { id: 'COBBLESTONE' },
+            null, { id: 'STICK' }, null,
+            null, { id: 'STICK' }, null
+        ],
+        output: { id: 'PICKAXE_STONE', count: 1 }
+    },
 ];
