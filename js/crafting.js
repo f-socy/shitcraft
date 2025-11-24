@@ -1,31 +1,55 @@
-// crafting.js - Conceptual Snippet
+// /js/crafting.js - NEW FILE
 
-const RECIPES = [
+/*
+    Format:
+    size: 2 (2x2 grid) or 3 (3x3 Crafting Table grid)
+    ingredients: Array of 4 (2x2) or 9 (3x3) items, in row-major order.
+    id: The BLOCK ID of the required material.
+    
+    Note: For 2x2, a null means an empty slot in the inventory crafting grid.
+*/
+export const CRAFTING_RECIPES = [
+    // --- Basic Inventory (2x2) Recipes ---
     {
-        name: "Wooden Pickaxe",
-        output: { id: 'pickaxe_wood', count: 1 },
+        name: "Planks from Wood",
+        size: 2,
         ingredients: [
-            { id: 'wood_plank', count: 3 },
-            { id: 'stick', count: 2 }
-        ]
+            { id: 'WOOD', count: 1 }, null, 
+            null, null
+        ],
+        output: { id: 'PLANK', count: 4 }
     },
     {
-        name: "Stone Block",
-        output: { id: 'block_stone', count: 1 },
+        name: "Sticks",
+        size: 2,
         ingredients: [
-            { id: 'cobblestone', count: 1 }
-        ]
+            { id: 'PLANK', count: 1 }, null, 
+            { id: 'PLANK', count: 1 }, null
+        ],
+        output: { id: 'STICK', count: 4 }
+    },
+    {
+        name: "Crafting Table",
+        size: 2,
+        ingredients: [
+            { id: 'PLANK', count: 1 }, { id: 'PLANK', count: 1 }, 
+            { id: 'PLANK', count: 1 }, { id: 'PLANK', count: 1 }
+        ],
+        output: { id: 'CRAFTING_TABLE', count: 1 }
+    },
+    
+    // --- Tools (Requires 3x3 Crafting Table, not implemented yet) ---
+    // Example: Wooden Pickaxe
+    /*
+    {
+        name: "Wooden Pickaxe",
+        size: 3,
+        ingredients: [
+            { id: 'PLANK' }, { id: 'PLANK' }, { id: 'PLANK' },
+            null, { id: 'STICK' }, null,
+            null, { id: 'STICK' }, null
+        ],
+        output: { id: 'PICKAXE_WOOD', count: 1 }
     }
-    // ... many more recipes
+    */
 ];
-
-export function attemptCrafting(gridItems) {
-    // gridItems is the current 2x2 or 3x3 crafting grid input
-    for (const recipe of RECIPES) {
-        if (matchesRecipe(recipe, gridItems)) {
-            // Deduct ingredients and return the output item
-            return recipe.output;
-        }
-    }
-    return null; // No match found
-}
